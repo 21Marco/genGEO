@@ -19,8 +19,8 @@ import matplotlib as plt
 
 from src.coolingCondensingTower import CoolingCondensingTower
 from src.powerPlantOutput import PowerPlantOutput
-#from src.plotDiagrams import TsDischarge
-#from src.plotDiagrams import PlotTQHX
+from src.plotDiagrams import TsDischarge
+from src.plotDiagrams import PlotTQHX
 
 from utils.constantsAndPaths import getTboilOptimum
 from utils.fluidState import FluidState
@@ -280,11 +280,11 @@ class ORCCycleTboil(object):
                 state[7] = FluidState.getStateFromPh(p_8, h_8, self.params.orc_fluid)
 
         #Creazione degli array di temperatura e entropia
-        #array_T = np.array([state[i].T_C for i in range(6)])  # Array delle temperature
-        #array_s = np.array([state[i].s_JK for i in range(6)])  # Array delle entropie (non penso serva)
+        array_T = np.array([state[i].T_C for i in range(6)])  # Array delle temperature
+        array_s = np.array([state[i].s_JK for i in range(6)])  # Array delle entropie (non penso serva)
 
         #Chiamata a TsDischarge
-        #TsDischarge(state, array_T, array_s, self.params.orc_fluid, self.params.orc_no_Rec)
+        TsDischarge(state, array_T, array_s, self.params.orc_fluid, self.params.orc_no_Rec)
 
         results = PowerPlantOutput()
 
@@ -300,6 +300,66 @@ class ORCCycleTboil(object):
 
         results.dP_pump_orc = state[1].P_Pa - state[0].P_Pa
         results.P_boil = state[3].P_Pa
+
+        # Creazione del dizionario HXs
+        HXs = {
+            'condenser': {
+                'T1': [state[8].T_C],  # Tin_cond
+                'T2': [state[0].T_C],  # Tout_cond
+                'fluid1': [self.params.orc_fluid],  # Fluioo orc
+                'fluid2': ['water'],  # Fluido utilizzato per il raffreddamento (ad esempio acqua)
+                'Q_sections': [abs(q_condenser_orc)],
+                'HX_parameters': {'HX_arrangement': ['counterflow']}  # Configurazione di scambio termico
+            },
+            'evaporator': {
+                'T1': [state[3].T_C],  # Tin_eva
+                'T2': [state[4].T_C],  # Tout_eva
+                'fluid1': [self.params.orc_fluid],
+                'fluid2': [self.params.working_fluid],  # Fluido geotermico
+                'Q_sections': [abs(q_boiler_orc)],
+                'HX_parameters': {'HX_arrangement': ['counterflow']}
+            },
+            'recuperator': {
+                'T1': [state[6].T_C],  # Tin_rec
+                'T2': [state[7].T_C],  # Tout_rec_hot_side
+                'fluid1': [self.params.orc_fluid],
+                'fluid2': [self.params.orc_fluid],
+                'Q_sections': [abs(q_desuperheater_orc)],
+                'HX_parameters': {'HX_arrangement': ['counterflow']}
+            },
+            'preheater': {
+                'T1': [state[2].T_C],  # Tout rec_cold_side
+                'T2': [state[3].T_C],  # Tout_preheater
+                'fluid1': [self.params.orc_fluid],
+                'fluid2': [self.params.working_fluid],
+                'Q_sections': [abs(q_preheater_orc)],
+                'HX_parameters': {'HX_arrangement': ['counterflow']}
+            },
+            'superheater': {
+                'T1': [state[4].T_C],  # Tin_superheater
+                'T2': [state[5].T_C],  # Tout_superheater
+                'fluid1': [self.params.orc_fluid],
+                'fluid2': [self.params.working_fluid],  # Fluidi coinvolti (puoi modificare in base alle tue esigenze)
+                'Q_sections': [abs(q_superheater_orc)],  # Calore trasferito nel superheater
+                'HX_parameters': {'HX_arrangement': ['counterflow']}
+            },
+            'desuperheater': {
+                'T1': [state[7].T_C],  # Tin_desuperheater
+                'T2': [state[8].T_C],  # Tout_desuperheater
+                'fluid1': [self.params.orc_fluid],
+                'fluid2': ['water'],
+                'Q_sections': [abs(q_desuperheater_orc)],  # Calore rimosso dal desuperheater
+                'HX_parameters': {'HX_arrangement': ['counterflow']}
+            }
+        }
+
+        # Chiamo la funzione PlotTQHX
+        HX_names = ['evaporator', 'condenser', 'recuperator']  # Elenco dei nomi dei componenti da plottare
+        mode_op = 'discharge'  # Modalità operativa
+        info_sim = None
+
+        # Chiamo la funzione di plotting
+        PlotTQHX(HXs, HX_names=HX_names, mode_op=mode_op, info_sim=info_sim)
 
         # Cooling Tower Parasitic load
         dT_range = state[4].T_C - state[5].T_C
