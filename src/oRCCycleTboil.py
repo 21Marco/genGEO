@@ -15,9 +15,12 @@
 ############################
 import os, math
 import numpy as np
+import matplotlib as plt
 
 from src.coolingCondensingTower import CoolingCondensingTower
 from src.powerPlantOutput import PowerPlantOutput
+#from src.plotDiagrams import TsDischarge
+#from src.plotDiagrams import PlotTQHX
 
 from utils.constantsAndPaths import getTboilOptimum
 from utils.fluidState import FluidState
@@ -73,49 +76,230 @@ class ORCCycleTboil(object):
 
         T_condense_C = self.params.T_ambient_C + self.params.dT_approach
 
-        # create empty list to compute cycle of 6 states
-        state = [None] * 6
- #bella bella
+        #Creation of a list for the 9 tdn points
+        state = [None] * 9
+
         #State 1 (Condenser -> Pump)
         #saturated liquid
         state[0] = FluidState.getStateFromTQ(T_condense_C, 0, self.params.orc_fluid)
+        #p_1 = state[0].P_Pa
 
-        #State 6 (Desuperheater -> Condenser)
+        #State 5 (Boiler -> Turbine)
         #saturated vapor
-        state[5] = FluidState.getStateFromTQ(state[0].T_C, 1, self.params.orc_fluid)
-        # state[5].P_Pa = state[0].P_Pa
+        state[4] = FluidState.getStateFromTQ(T_boil_C, 1, self.params.orc_fluid)
 
-        #State 3 (Preheater -> Boiler)
-        #saturated liquid
-        state[2] = FluidState.getStateFromTQ(T_boil_C, 0, self.params.orc_fluid)
+        #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
+        #Condenser
+        if self.params.dp_dT_loss[8] > 0:
+            p_9 = state[0].P_Pa / (1 - self.params.dp_dT_loss[8])  # dp for the condenser
+        else:
+            T_9 = state[0].T_C + self.params.dp_dT_loss[8]
+            p_9 = FluidState.getStateFromTQ(T_9, 1, self.params.orc_fluid).P_Pa
+            # p_9 = dp_loss_ass_cond + state[0].P_Pa
 
-        #State 4 (Boiler -> Turbine)
-        #saturated vapor
-        state[3] = FluidState.getStateFromTQ(state[2].T_C, 1, self.params.orc_fluid)
-        # state[3].P_Pa = state[2].P_Pa
+        #Desuperheater
+        if self.params.dp_dT_loss[7] > 0:
+            p_8 = p_9 / (1 - self.params.dp_dT_loss[7])  # dp for the desuperheater
+        else:
+            p_8 = self.params.dp_dT_loss[7] + p_9
 
-        #State 5 (Turbine -> Desuperheater)
-        h_5s = FluidState.getStateFromPS(state[0].P_Pa, state[3].s_JK, self.params.orc_fluid).h_Jkg
-        h_5 = state[3].h_Jkg - self.params.eta_turbine_orc * (state[3].h_Jkg - h_5s)
-        state[4] = FluidState.getStateFromPh(state[0].P_Pa, h_5, self.params.orc_fluid)
+        #Boiler/Evaporator
+        if self.params.dp_dT_loss[3] > 0:
+            p_4 = state[4].P_Pa / (1 - self.params.dp_dT_loss[3])  # dp for the boiler
+        else:
+            T_4 = state[4].T_C + self.params.dp_dT_loss[3]  # - dT_sc
+            p_4 = FluidState.getStateFromTQ(T_4, 0, self.params.orc_fluid).P_Pa
 
-        # #State 2 (Pump -> Preheater)
-        h_2s = FluidState.getStateFromPS(state[2].P_Pa, state[0].s_JK, self.params.orc_fluid).h_Jkg
-        h_2 = state[0].h_Jkg - ((state[0].h_Jkg - h_2s) / self.params.eta_pump_orc)
-        state[1] = FluidState.getStateFromPh(state[2].P_Pa, h_2, self.params.orc_fluid)
+        #Preheater/Economizer
+        if self.params.dp_dT_loss[2] > 0:
+            p_3 = p_4 / (1 - self.params.dp_dT_loss[2])  # dp for the pre-heater
+        else:
+            p_3 = self.params.dp_dT_loss[2] + p_4
+
+        if self.params.orc_Saturated:  # Saturated ORC Cycle (without SH)
+            if self.params.orc_no_Rec:  # without Recuperator
+
+                #Compute the TDN points
+                #tate 9 (Desuperheater -> Condenser)
+                #Ssaturated vapor
+                state[8] = FluidState.getStateFromPQ(p_9, 1, self.params.orc_fluid)
+
+                #State 6 = 5 (Boiler -> Turbine)
+                state[5] = state[4]
+
+                #State 4 (Preheater -> Boiler)
+                #saturated liquid
+                state[3] = FluidState.getStateFromPQ(p_4, 0, self.params.orc_fluid)
+
+                #State 2 = 3 (Pump -> Preheater)
+                h_2s = FluidState.getStateFromPS(p_3, state[0].s_JK, self.params.orc_fluid).h_Jkg
+                h_2 = state[0].h_Jkg - ((state[0].h_Jkg - h_2s) / self.params.eta_pump_orc)
+                state[1] = FluidState.getStateFromPh(p_3, h_2, self.params.orc_fluid)
+                state[2] = state[1]
+
+                #State 8 = 7 (Turbine -> Desuperheater)
+                h_8s = FluidState.getStateFromPS(p_8, state[4].s_JK, self.params.orc_fluid).h_Jkg
+                h_8 = state[4].h_Jkg - self.params.eta_turbine_orc * (state[4].h_Jkg - h_8s)
+                state[7] = FluidState.getStateFromPh(p_8, h_8, self.params.orc_fluid)
+                state[6] = state[7]
+
+                # State 3*
+                # T_3* = T_3 - dT_sc
+                # state[3*] = FluidState.getStateFromPT(p_3, T_3*, self.params.orc_fluid)
+
+            else:  # with the Recuperator
+
+                #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
+                #Recuperator hot side
+                if self.params.dp_dT_loss[6] > 0:
+                    p_7 = p_8 / (1 - self.params.dp_dT_loss[6])  # dp for the hot side recuperator
+                else:
+                    p_7 = self.params.dp_dT_loss[6] + p_8
+
+                #Recuperator cold side
+                if self.params.dp_dT_loss[1] > 0:
+                    p_2 = p_3 * (1 - self.params.dp_dT_loss[1])  # dp for the recuperator cold side
+                else:
+                    p_2 = p_3 - self.params.dp_dT_loss[1]
+
+                #Compute the TDN points
+                #State 9 (Desuperheater -> Condenser)
+                #saturated vapor
+                state[8] = FluidState.getStateFromPQ(p_9, 1, self.params.orc_fluid)
+
+                #State 6 = 5 (Turbine -> Recuperator hot side)
+                state[5] = state[4]
+
+                #State 4 (Preheater -> Boiler)
+                #saturated liquid
+                state[3] = FluidState.getStateFromPQ(p_4, 0, self.params.orc_fluid)
+
+                #State 2 (Pump -> Recuperator cold side)
+                h_2s = FluidState.getStateFromPS(p_2, state[0].s_JK, self.params.orc_fluid).h_Jkg
+                h_2 = state[0].h_Jkg - ((state[0].h_Jkg - h_2s) / self.params.eta_pump_orc)
+                state[1] = FluidState.getStateFromPh(p_2, h_2, self.params.orc_fluid)
+
+                #State 3 (Recuperator cold side -> Preheater)
+                T_3 = state[1].T_C + self.params.dT_pp_rec
+                state[2] = FluidState.getStateFromPT(p_3, T_3, self.params.orc_fluid)
+
+                #State 7 (Turbine -> Recuperator)
+                h_7s = FluidState.getStateFromPS(p_7, state[5].s_JK, self.params.orc_fluid).h_Jkg
+                h_7 = state[5].h_Jkg - self.params.eta_turbine_orc * (state[5].h_Jkg - h_7s)
+                state[6] = FluidState.getStateFromPh(p_7, h_7, self.params.orc_fluid)
+
+                #State 8 (Recuperator hot -> Desuperheater)
+                h_8 = h_7 - state[2].h_Jkg + h_2
+                state[7] = FluidState.getStateFromPh(p_8, h_8, self.params.orc_fluid)
+
+        else:  # ORC Cycle with SH
+            if self.params.orc_no_Rec:  # without Recuperator
+
+                #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
+                #Superheater
+                if self.params.dp_dT_loss[4] > 0:
+                    p_6 = state[4].P_Pa * (1 - self.params.dp_dT_loss[4])  # dp for the superheater
+                else:
+                    p_6 = state[4].P_Pa - self.params.dp_dT_loss[4]
+
+                #Compute TDN points
+                #State 9 (Desuperheater -> Condenser)
+                #saturated vapor
+                state[8] = FluidState.getStateFromPQ(p_9, 1, self.params.orc_fluid)
+
+                #State 6 (Superheater -> Turbine)
+                T_6 = T_in_C - self.params.dT_ap_phe
+                state[5] = FluidState.getStateFromPT(p_6, T_6, self.params.orc_fluid)
+
+                #State 8 = 7 (Turbine -> Desuperheater)
+                h_8s = FluidState.getStateFromPS(p_8, state[5].s_JK, self.params.orc_fluid).h_Jkg
+                h_8 = state[5].h_Jkg - self.params.eta_turbine_orc * (state[5].h_Jkg - h_8s)
+                state[7] = FluidState.getStateFromPh(p_8, h_8, self.params.orc_fluid)
+                state[6] = state[7]
+
+                #State 2 = 3 (Pump -> Preheater)
+                h_2s = FluidState.getStateFromPS(p_3, state[0].s_JK, self.params.orc_fluid).h_Jkg
+                h_2 = state[0].h_Jkg - ((state[0].h_Jkg - h_2s) / self.params.eta_pump_orc)
+                state[1] = FluidState.getStateFromPh(p_3, h_2, self.params.orc_fluid)
+                state[2] = state[1]
+
+                #State 4 (Preheater -> Boiler)
+                #saturated liquid
+                state[3] = FluidState.getStateFromPQ(p_4, 0, self.params.orc_fluid)
+
+            else:  # ciclo orc SH con rec
+
+                #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
+                #Superheater
+                if self.params.dp_dT_loss[4] > 0:
+                    p_6 = state[4].P_Pa * (1 - self.params.dp_dT_loss[4])  # dp for the superheater
+                else:
+                    p_6 = state[4].P_Pa - self.params.dp_dT_loss[4]
+
+                #Recuperator hot side
+                if self.params.dp_dT_loss[6] > 0:
+                    p_7 = p_8 / (1 - self.params.dp_dT_loss[6])  # dp for the hot side recuperator
+                else:
+                    p_7 = self.params.dp_dT_loss[6] + p_8
+
+                #Recuperator cold side
+                if self.params.dp_dT_loss[1] > 0:
+                    p_2 = p_3 * (1 - self.params.dp_dT_loss[1])  # dp for the cold side recuperator
+                else:
+                    p_2 = p_3 - self.params.dp_dT_loss[1]
+
+                #Compute TDN points
+                #State 9 (Desuperheater -> Condenser)
+                #saturated vapor
+                state[8] = FluidState.getStateFromPQ(p_9, 1, self.params.orc_fluid)
+
+                #State 6 (Superheater -> Turbine)
+                T_6 = T_in_C - self.params.dT_ap_phe
+                state[5] = FluidState.getStateFromPT(p_6, T_6, self.params.orc_fluid)
+
+                #State 7 (Turbine -> Recuperator)
+                h_7s = FluidState.getStateFromPS(p_7, state[5].s_JK, self.params.orc_fluid).h_Jkg
+                h_7 = state[5].h_Jkg - self.params.eta_turbine_orc * (state[5].h_Jkg - h_7s)
+                state[6] = FluidState.getStateFromPh(p_7, h_7, self.params.orc_fluid)
+
+                #State 4 (Preheater -> Boiler)
+                #saturated liquid
+                state[3] = FluidState.getStateFromPQ(p_4, 0, self.params.orc_fluid)
+
+                #State 2 (Pump -> Recuperator)
+                h_2s = FluidState.getStateFromPS(p_2, state[0].s_JK, self.params.orc_fluid).h_Jkg
+                h_2 = state[0].h_Jkg - ((state[0].h_Jkg - h_2s) / self.params.eta_pump_orc)
+                state[1] = FluidState.getStateFromPh(p_2, h_2, self.params.orc_fluid)
+
+                #State 3 (Recuperator cold -> Preheater)
+                T_3 = state[1].T_C + self.params.dT_pp_rec
+                state[2] = FluidState.getStateFromPT(p_3, T_3, self.params.orc_fluid)
+
+                #State 8 (Recuperator hot -> Desuperheater)
+                h_8 = h_7 - state[2].h_Jkg + h_2
+                state[7] = FluidState.getStateFromPh(p_8, h_8, self.params.orc_fluid)
+
+        #Creazione degli array di temperatura e entropia
+        #array_T = np.array([state[i].T_C for i in range(6)])  # Array delle temperature
+        #array_s = np.array([state[i].s_JK for i in range(6)])  # Array delle entropie (non penso serva)
+
+        #Chiamata a TsDischarge
+        #TsDischarge(state, array_T, array_s, self.params.orc_fluid, self.params.orc_no_Rec)
 
         results = PowerPlantOutput()
 
-        # #Calculate orc heat/work
+        #Calculate orc heat/work
         w_pump_orc = state[0].h_Jkg - state[1].h_Jkg
-        q_preheater_orc = -1 * (state[1].h_Jkg - state[2].h_Jkg)
-        q_boiler_orc = -1 * (state[2].h_Jkg - state[3].h_Jkg)
-        w_turbine_orc = state[3].h_Jkg - state[4].h_Jkg
-        q_desuperheater_orc = -1 * (state[4].h_Jkg - state[5].h_Jkg)
-        q_condenser_orc = -1 * (state[5].h_Jkg - state[0].h_Jkg)
+        q_recuperator_orc = -1 * (state[1].h_Jkg - state[2].h_Jkg)
+        q_preheater_orc = -1 * (state[2].h_Jkg - state[3].h_Jkg)
+        q_boiler_orc = -1 * (state[3].h_Jkg - state[4].h_Jkg)
+        q_superheater_orc = -1 * (state[4].h_Jkg - state[5].h_Jkg)
+        w_turbine_orc = state[5].h_Jkg - state[6].h_Jkg
+        q_desuperheater_orc = -1 * (state[7].h_Jkg - state[8].h_Jkg)
+        q_condenser_orc = -1 * (state[8].h_Jkg - state[0].h_Jkg)
 
         results.dP_pump_orc = state[1].P_Pa - state[0].P_Pa
-        results.P_boil = state[2].P_Pa
+        results.P_boil = state[3].P_Pa
 
         # Cooling Tower Parasitic load
         dT_range = state[4].T_C - state[5].T_C

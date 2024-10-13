@@ -21,8 +21,8 @@ class SimulationParameters(object):
     """SimulationParameters provides physical properties of the system."""
 
     def __init__(self,
-                working_fluid = None,
-                orc_fluid = None,
+                working_fluid = None,   #geothermic fluid
+                orc_fluid = None,       #ORC fluid
                 m_dot_IP = None,
                 time_years = 1.,
                 # subsurface model
@@ -41,10 +41,15 @@ class SimulationParameters(object):
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
+                orc_Saturated = True,  # se True, ciclo saturo
+                orc_no_Rec = True,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
+                dp_dT_loss = [0, 0, 0, 0, 0, 0, 0, 0, 0],
                 dT_approach = 7.,
                 dT_pinch = 5.,
+                dT_pp_rec = 5.,  # pinch al recuperatore
+                dT_ap_phe = 10.,  # Approach al PHE
                 eta_pump_orc = 0.9,
                 eta_turbine_orc = 0.8,
                 eta_pump_co2 = 0.9,
@@ -87,10 +92,15 @@ class SimulationParameters(object):
         self.wellFieldType = wellFieldType
         self.N_5spot = N_5spot
         self.has_surface_gathering_system = has_surface_gathering_system
+        self.orc_Saturated = orc_Saturated
+        self.orc_no_Rec = orc_no_Rec
         self.max_pump_dP = max_pump_dP
         self.eta_pump = eta_pump
+        self.dp_dT_loss = dp_dT_loss
         self.dT_approach = dT_approach
         self.dT_pinch = dT_pinch
+        self.dT_pp_rec = dT_pp_rec
+        self.dT_ap_phe = dT_ap_phe
         self.eta_pump_orc = eta_pump_orc
         self.eta_turbine_orc = eta_turbine_orc
         self.eta_pump_co2 = eta_pump_co2
