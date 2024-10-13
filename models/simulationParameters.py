@@ -21,7 +21,7 @@ class SimulationParameters(object):
     """SimulationParameters provides physical properties of the system."""
 
     def __init__(self,
-                working_fluid = None,   #geothermic fluid
+                working_fluid = 'water',   #geothermic fluid
                 orc_fluid = None,       #ORC fluid
                 m_dot_IP = None,
                 time_years = 1.,
@@ -41,11 +41,11 @@ class SimulationParameters(object):
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
-                orc_Saturated = True,  # se True, ciclo saturo
-                orc_no_Rec = True,     # se True, no recuperatore
+                orc_Saturated = False,  # se True, ciclo saturo
+                orc_no_Rec = False,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
-                dp_dT_loss = [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                dp_dT_loss = [0, 0, 0, 0, 0, 0, 0, 0, 0], #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
                 dT_approach = 7.,
                 dT_pinch = 5.,
                 dT_pp_rec = 5.,  # pinch al recuperatore
