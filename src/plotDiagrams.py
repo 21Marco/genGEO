@@ -53,8 +53,8 @@ def TsDischarge(state, array_T, array_s, orc_fluid, orc_no_Rec, DH_water=None, a
             T_array = np.array([state[ii].T_C, state[ii + 1].T_C])   #creo un array di due valori, ingresso e uscita
             s_array = np.array([state[ii].s_JK, state[ii + 1].s_JK])
         elif ii == in_cond:
-            h_array = np.linspace(state[ii].h_Jkg, state[8].h_Jkg, cycle_points)
-            p_array = np.linspace(state[ii].P_Pa, state[8].P_Pa, cycle_points)
+            h_array = np.linspace(state[ii].h_Jkg, state[0].h_Jkg, cycle_points)
+            p_array = np.linspace(state[ii].P_Pa, state[0].P_Pa, cycle_points)
             fluid_state = FluidState.getStateFromPh(p_array, h_array, orc_fluid)
             T_array = fluid_state.T_C
             s_array = fluid_state.s_JK
@@ -109,9 +109,9 @@ def TsDischarge(state, array_T, array_s, orc_fluid, orc_no_Rec, DH_water=None, a
     plt.show()
     return fig
 
-# noinspection PyDefaultArgument
 def PlotTQHX(HXs, HX_names=['evaporator', 'condenser', 'recuperator'], mode_op='discharge', info_sim=None):
-    fig, ax = plt.subplots(1, 3)
+    fig, ax = plt.subplots(1, 3, squeeze = False) #creo più assi(colonne) con la stessa riga. # Uso squeeze=False per garantire un array 2D di Axes
+    ax = ax.flatten()
     nn = 0
 
     for ii in HX_names:
@@ -141,7 +141,8 @@ def PlotTQHX(HXs, HX_names=['evaporator', 'condenser', 'recuperator'], mode_op='
 
         PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names[nn], mode_op, ax[nn], fig, info_sim)
         nn += 1
-        plt.show()
+    fig.tight_layout() # evita sovrapposizioni
+    plt.show()
     return fig
 
 def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, mode_op, curr_ax, fig,

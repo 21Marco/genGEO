@@ -22,14 +22,14 @@ class SimulationParameters(object):
 
     def __init__(self,
                 working_fluid = 'water',   #geothermic fluid
-                orc_fluid = None,       #ORC fluid
+                orc_fluid = 'R134a', #None      #ORC fluid
                 m_dot_IP = None,
                 time_years = 1.,
                 # subsurface model
                 depth = 2500.,
                 pump_depth = 500.,
                 well_radius = 0.205,
-                well_spacing = 707.,
+                well_spacing = 707,
                 monitoring_well_radius = 0.108,
                 dT_dz = 0.035,
                 silica_precipitation = False,
