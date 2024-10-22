@@ -5,10 +5,10 @@ from utils.fluidState import FluidState
 import sys
 
 
-def TsDischarge(state, array_T, array_s, orc_fluid, orc_no_Rec, DH_water=None, arrangement_cond="counterflow"): #, info_sim=None
+def TsDischarge(state, T, orc_fluid, orc_no_Rec, DH_water=None, arrangement_cond="counterflow"): #, info_sim=None
     fig, ax = plt.subplots(1, 1) # creazione della figura e degli assi
     dT_min = 10
-    T_min = min(array_T) - dT_min
+    T_min = min(T) - dT_min
     color_fluid = 'red'
     color_rec = 'green'
     color_sat = 'gray'
@@ -38,17 +38,14 @@ def TsDischarge(state, array_T, array_s, orc_fluid, orc_no_Rec, DH_water=None, a
 
     # Plot discharging cycle
     cycle_points = 50
-    seq = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    in_pump, in_rec_cold, in_eco, in_eva, in_sh, in_turb, in_rec_hot, in_desh, in_cond = seq
-    streams_labels = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    seq = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    in_pump, in_rec_cold, in_eco, out_eco, in_eva, in_sh, in_turb, in_rec_hot, in_desh, in_cond = seq
+    streams_labels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
 
     for ii in seq:
         if ii == in_turb:
-            h_array = np.linspace(state[ii].h_Jkg, state[ii + 1].h_Jkg, cycle_points)
-            p_array = np.linspace(state[ii].P_Pa, state[ii + 1].P_Pa, cycle_points)
-            fluid_state = FluidState.getStateFromPh(p_array, h_array, orc_fluid)
-            T_array = fluid_state.T_C
-            s_array = fluid_state.s_JK
+            T_array = np.array([state[ii].T_C, state[ii + 1].T_C])  # creo un array di due valori, ingresso e uscita. Temperature della turbina
+            s_array = np.array([state[ii].s_JK, state[ii + 1].s_JK])  # Entropie della turbina
         elif ii == in_pump:
             T_array = np.array([state[ii].T_C, state[ii + 1].T_C])   #creo un array di due valori, ingresso e uscita
             s_array = np.array([state[ii].s_JK, state[ii + 1].s_JK])
@@ -109,9 +106,8 @@ def TsDischarge(state, array_T, array_s, orc_fluid, orc_no_Rec, DH_water=None, a
     plt.show()
     return fig
 
-def PlotTQHX(HXs, HX_names=['evaporator', 'condenser', 'recuperator'], mode_op='discharge', info_sim=None):
-    fig, ax = plt.subplots(1, 3, squeeze = False) #creo più assi(colonne) con la stessa riga. # Uso squeeze=False per garantire un array 2D di Axes
-    ax = ax.flatten()
+def PlotTQHX(HXs, HX_names=['evaporator', 'condenser', 'recuperator']):
+    fig, ax = plt.subplots(1, 3)
     nn = 0
 
     for ii in HX_names:
@@ -120,33 +116,21 @@ def PlotTQHX(HXs, HX_names=['evaporator', 'condenser', 'recuperator'], mode_op='
         fld1 = HXs[ii]['fluid1'][0]
         fld2 = HXs[ii]['fluid2'][0]
         Q = HXs[ii]['Q_sections'][0]
+        # if 'economizer' in HXs.keys() and ii == "evaporator":
+        #     T1 = np.append(T1[0:-1], HXs['economizer']['T1'][0])
+        #     T2 = np.append(T2[0:-1], HXs['economizer']['T2'][0])
+        #     Q = np.append(Q, HXs['economizer']['Q_sections'][0])
 
-        # Aggiungo il preriscaldatore (preheater) se sto gestendo l'evaporatore
-        if 'preheater' in HXs.keys() and ii == "evaporator":
-            T1 = np.array([T1, HXs['preheater']['T1'][0]])
-            T2 = np.array([T2, HXs['preheater']['T2'][0]])
-            Q = np.append(Q, HXs['preheater']['Q_sections'][0])
-
-        # Aggiungo il super riscaldatore se sto gestendo l'evaporatore
-        if 'superheater' in HXs.keys() and ii == "evaporator":
-            T1 = np.append(T1, HXs['superheater']['T1'][0])
-            T2 = np.append(T2, HXs['superheater']['T2'][0])
-            Q = np.append(Q, HXs['superheater']['Q_sections'][0])
-
-        # Aggiungo il desuperheater se sto gestendo il condensatore
-        if 'desuperheater' in HXs.keys() and ii == "condenser":
-            T1 = np.append(T1, HXs['desuperheater']['T1'][0])
-            T2 = np.append(T2, HXs['desuperheater']['T2'][0])
-            Q = np.append(Q, HXs['desuperheater']['Q_sections'][0])
-
-        PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names[nn], mode_op, ax[nn], fig, info_sim)
+        if fld1 == "reactor" or fld2 == "reactor":
+            arrangement_HX = "reactor"
+        else:
+            arrangement_HX = HXs[ii]["HX_parameters"]["HX_arrangement"][0]
+        PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names[nn], arrangement_HX, ax[nn], fig)
         nn += 1
-    fig.tight_layout() # evita sovrapposizioni
-    plt.show()
     return fig
 
-def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, mode_op, curr_ax, fig,
-                 info_sim=None):  # Plot T-q fro HXs
+
+def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, curr_ax, fig):  # Plot T-q fro HXs
 
     str_RP = 'REFPROP::'
 
@@ -159,11 +143,11 @@ def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, mode_op, curr_
     if len(fld2) > 10:
         fld2 = fld2[:9] + "."
 
-    if mode_op == "discharge" and HX_names == "recuperator":
+    if arrangement_HX != "counterflow" and arrangement_HX != "reactor":
         T1 = T1[::-1]
         T2 = T2[::-1]
 
-    if all(T1 > T2):
+    if np.all(T1 > T2):
         TH = T1
         fldH = fld1
         TC = T2
@@ -180,12 +164,9 @@ def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, mode_op, curr_
         arrHX = 'cc.'  # Co-current (parallel)
 
     n_sections = len(TH)
-    Q_cumul = np.concatenate(([0], np.cumsum(Q * np.ones(n_sections)))) #Q_cumul = np.concatenate(([0], np.cumsum(Q * np.ones(n_sections - 1))))
-    if mode_op == "discharge":
-        fig.suptitle("T-Q chart of Heat Exchangers in Discharge Mode" + ' - n°sim: ' + str(info_sim))
-    elif mode_op == "charge":
-        fig.suptitle("T-Q chart of Heat Exchangers in Charge Mode" + ' - n°sim: ' + str(info_sim)) # si possono togliere?
+    Q_cumul = np.concatenate(([0], np.cumsum(Q * np.ones(n_sections - 1))))
 
+    print("Tipo di curr_ax prima di plot:", type(curr_ax))  # Stampa il tipo di curr_ax per vedere se rimane coerente
     lH, = curr_ax.plot(Q_cumul, TH)
     lC, = curr_ax.plot(Q_cumul, TC)
     lH.set_color('red')
@@ -199,6 +180,99 @@ def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, mode_op, curr_
     fig.tight_layout()
     plt.show()
     return
+
+# def PlotTQHX(HXs, HX_names=['evaporator', 'condenser', 'recuperator'], mode_op='discharge', info_sim=None):
+#     fig, ax = plt.subplots(1, 3)  # Creo più assi (colonne) con la stessa riga
+#     ax = ax.flatten()  # Appiattisco per garantire un array 1D di assi
+#
+#     print("Tipo di fig:", type(fig))  # Verifica che fig sia di tipo matplotlib.figure.Figure
+#     print("Tipo di ax:", type(ax))  # Verifica che ax sia un array di assi
+#     print("Ax appiattito:", ax)  # Verifica che ax sia effettivamente un array di oggetti Axes
+#
+#     nn = 0
+#
+#     for ii in HX_names:
+#         T1 = HXs[ii]['T1'][0]
+#         T2 = HXs[ii]['T2'][0]
+#         fld1 = HXs[ii]['fluid1'][0]
+#         fld2 = HXs[ii]['fluid2'][0]
+#         Q = HXs[ii]['Q_sections'][0]
+#
+#         if fld1 == "reactor" or fld2 == "reactor":
+#             arrangement_HX = "reactor"
+#         else:
+#             arrangement_HX = HXs[ii]["HX_parameters"]["HX_arrangement"][0]
+#
+#         print(f"Sto passando ax[{nn}] alla funzione PlotTQSingle")
+#
+#         # Passo ax[nn] (oggetto Axes) e NON fig
+#         PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names[nn], arrangement_HX, mode_op, ax[nn], fig, info_sim)
+#         nn += 1
+#
+#     return fig
+#
+#
+# def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, mode_op, curr_ax, fig, info_sim=None):
+#     print("Tipo di curr_ax (dovrebbe essere Axes):",
+#           type(curr_ax))  # Verifica il tipo di curr_ax prima di chiamare plot
+#
+#     str_RP = 'REFPROP::'
+#     if str_RP in fld1:
+#         fld1 = fld1.replace(str_RP, '')
+#     if str_RP in fld2:
+#         fld2 = fld2.replace(str_RP, '')
+#     if len(fld1) > 10:
+#         fld1 = fld1[:9] + "."
+#     if len(fld2) > 10:
+#         fld2 = fld2[:9] + "."
+#
+#     if mode_op == "discharge" and HX_names == "recuperator":
+#         T1 = T1[::-1]
+#         T2 = T2[::-1]
+#
+#     if arrangement_HX != "counterflow" and arrangement_HX != "reactor":
+#         T1 = T1[::-1]
+#         T2 = T2[::-1]
+#
+#     if np.all(T1 > T2):
+#         TH = T1
+#         fldH = fld1
+#         TC = T2
+#         fldC = fld2
+#     else:
+#         TH = T2
+#         fldH = fld2
+#         TC = T1
+#         fldC = fld1
+#
+#     if arrangement_HX == 'counterflow':
+#         arrHX = 'cf.'  # Counterflow
+#     elif arrangement_HX == 'reactor':
+#         arrHX = 'react.'
+#     else:
+#         arrHX = 'cc.'  # Co-current (parallel)
+#
+#     n_sections = len(TH)
+#     Q_cumul = np.concatenate(([0], np.cumsum(Q * np.ones(n_sections - 1))))
+#
+#     print("Tipo di curr_ax prima di plot:", type(curr_ax))  # Stampa il tipo di curr_ax per vedere se rimane coerente
+#
+#     # Verifica che curr_ax sia di tipo Axes prima di chiamare plot
+#     if isinstance(curr_ax, plt.Axes):
+#         lH, = curr_ax.plot(Q_cumul, TH, color='red')  # Usa curr_ax per il plotting
+#         lC, = curr_ax.plot(Q_cumul, TC, color='blue')
+#         curr_ax.set_title(HX_names + " - " + arrHX)
+#         curr_ax.legend([lH, lC], [fldH, fldC])
+#         curr_ax.set_xlabel('Thermal power [kW]')
+#         curr_ax.set_ylabel('Temperature [°C]')
+#         curr_ax.set_xlim(left=0)
+#         curr_ax.grid(linestyle="--")
+#     else:
+#         print("Errore: curr_ax non è di tipo Axes. È di tipo:", type(curr_ax))
+#
+#     fig.tight_layout()
+#     plt.show()
+#     return
 
 def save_multi_image(filename):
     pp = PdfPages(filename)

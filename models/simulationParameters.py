@@ -22,7 +22,7 @@ class SimulationParameters(object):
 
     def __init__(self,
                 working_fluid = 'water',   #geothermic fluid
-                orc_fluid = 'R134a', #None      #ORC fluid
+                orc_fluid = None,      #ORC fluid
                 m_dot_IP = None,
                 time_years = 1.,
                 # subsurface model
@@ -50,6 +50,8 @@ class SimulationParameters(object):
                 dT_pinch = 5.,
                 dT_pp_rec = 5.,  # pinch al recuperatore
                 dT_ap_phe = 10.,  # Approach al PHE
+                dT_sh_phe = 15.,  #superheater al PHE
+                dT_sc_phe = 2.,   #sub_cooling al PHE
                 eta_pump_orc = 0.9,
                 eta_turbine_orc = 0.8,
                 eta_pump_co2 = 0.9,
@@ -101,6 +103,8 @@ class SimulationParameters(object):
         self.dT_pinch = dT_pinch
         self.dT_pp_rec = dT_pp_rec
         self.dT_ap_phe = dT_ap_phe
+        self.dT_sh_phe = dT_sh_phe
+        self.dT_sc_phe = dT_sc_phe
         self.eta_pump_orc = eta_pump_orc
         self.eta_turbine_orc = eta_turbine_orc
         self.eta_pump_co2 = eta_pump_co2

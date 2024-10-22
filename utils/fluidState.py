@@ -13,6 +13,8 @@
 #
 
 ############################
+import numpy as np
+
 from utils.coolPropInterface import coolProp
 from utils.constantsAndPaths import ConversionConstants
 
@@ -130,3 +132,23 @@ class FluidState(object):
     @staticmethod
     def getPcrit(fluid):
         return coolProp('PCRIT', "", 0, "", 0, fluid)
+
+
+class Update:
+    def __init__(self):
+        self.state = [None] * 10  # Inizializza lo stato
+        self.p = np.zeros(10)      # Inizializza la pressione
+        self.T = np.zeros(10)      # Inizializza la temperatura
+        self.h = np.zeros(10)      # Inizializza l'entalpia
+
+    def update_state(self, index, new_state):
+        """Aggiorna lo stato e le proprietà corrispondenti."""
+        self.state[index] = new_state  # Aggiorna lo stato
+        self.update_properties(index)   # Aggiorna T, P, H in base al nuovo stato
+
+    def update_properties(self, index):
+        """Aggiorna T, P, H in base allo stato definito."""
+        if self.state[index] is not None:
+            self.T[index] = self.state[index].T_C  # Aggiorna la temperatura
+            self.p[index] = self.state[index].P_Pa  # Aggiorna la pressione
+            self.h[index] = self.state[index].h_Jkg  # Aggiorna l'entalpia
