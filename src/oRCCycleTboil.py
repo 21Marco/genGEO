@@ -422,7 +422,7 @@ class ORCCycleTboil(object):
         }
 
         # Chiamo la funzione PlotTQHX
-        HX_names = ['evaporator', 'condenser', 'recuperator'] # Elenco dei nomi dei componenti da plottare
+        HX_names = ['recuperator'] #['evaporator', 'condenser', 'recuperator'] # Elenco dei nomi dei componenti da plottare
 
         # Chiamo la funzione di plotting
         PlotTQHX(HXs, HX_names=HX_names)
