@@ -45,13 +45,15 @@ class SimulationParameters(object):
                 orc_no_Rec = False,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
-                dp_dT_loss = [0, 0, 0, 0, 0, 0, 0, 0, 0], #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
+                dp_dT_loss = [0, 0, 0, 0, 0, 0, 0, 0, 0], #pump, rec_cold, eco, eva, sh, turb, rec_hot, desh, cond  #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
                 dT_approach = 7.,
                 dT_pinch = 5.,
                 dT_pp_rec = 5.,  # pinch al recuperatore
                 dT_ap_phe = 10.,  # Approach al PHE
                 dT_sh_phe = 15.,  #superheater al PHE
                 dT_sc_phe = 2.,   #sub_cooling al PHE
+                dT_ap_cond = 10.,
+                dT_pp_cond = 5.,
                 eta_pump_orc = 0.9,
                 eta_turbine_orc = 0.8,
                 eta_pump_co2 = 0.9,
@@ -105,6 +107,8 @@ class SimulationParameters(object):
         self.dT_ap_phe = dT_ap_phe
         self.dT_sh_phe = dT_sh_phe
         self.dT_sc_phe = dT_sc_phe
+        self.dT_ap_cond = dT_ap_cond
+        self.dT_pp_cond = dT_pp_cond
         self.eta_pump_orc = eta_pump_orc
         self.eta_turbine_orc = eta_turbine_orc
         self.eta_pump_co2 = eta_pump_co2
