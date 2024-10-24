@@ -227,9 +227,9 @@ class ORCCycleTboil(object):
                 #State 7 (Superheater -> Turbine)
                 self.T[out_sh] = T_in_C - self.params.dT_ap_phe    #T_boil_C (T_5) + self.params.dT_sh_phe
                 if T_in_C - self.params.dT_ap_phe < T_boil_C:
-                    raise ValueError('Input temperature after approach difference is below boiling temperature')
+                    raise ValueError('GenGeo::ORCCycleTboil:Input temperature after approach difference is below boiling temperature')
                 if T_boil_C + self.params.dT_sh_phe > T_in_C:
-                    raise ValueError('Boiling temperature plus superheating approach difference exceeds input temperature.')
+                    raise ValueError('GenGeo::ORCCycleTboil:Boiling temperature plus superheating approach difference exceeds input temperature.')
 
                 self.state[out_sh] = FluidState.getStateFromPT(self.p[out_sh], self.T[out_sh], self.params.orc_fluid)
                 self.update_properties(out_sh)
@@ -280,9 +280,9 @@ class ORCCycleTboil(object):
                 #State 7 (Superheater -> Turbine)
                 self.T[out_sh] = T_in_C - self.params.dT_ap_phe   #T_boil_C + self.params.dT_sh_phe
                 if T_in_C - self.params.dT_ap_phe < T_boil_C:
-                    raise ValueError('Input temperature after approach difference is below boiling temperature')
+                    raise ValueError('GenGeo::ORCCycleTboil:Input temperature after approach difference is below boiling temperature')
                 if T_boil_C + self.params.dT_sh_phe > T_in_C:
-                    raise ValueError('Boiling temperature plus superheating approach difference exceeds input temperature.')
+                    raise ValueError('GenGeo::ORCCycleTboil:Boiling temperature plus superheating approach difference exceeds input temperature.')
                 self.state[out_sh] = FluidState.getStateFromPT(self.p[out_sh], self.T[out_sh], self.params.orc_fluid)
                 self.update_properties(out_sh)
 
@@ -464,7 +464,7 @@ class ORCCycleTboil(object):
             self.params.dT_pp_cond = self.T[out_desh] - self.T_cooling_water_mid
 
             if self.T_cooling_water_mid > T_condense_C:
-                raise Exception('GenGEO::ORCCycleTboil:crossing lines')
+                raise ValueError('GenGeo::ORCCycleTboil:T_cooling_water_mid cannot be greater than T_condense_C')
 
             self.R = mdot_ratio * abs(q_condenser_orc)/(cp_amb * (self.T_cooling_water_mid - self.params.T_cooling_water_in))
             self.state_cond[0] = FluidState.getStateFromPT(p_amb, self.params.T_cooling_water_in, 'Water')

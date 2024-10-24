@@ -41,7 +41,7 @@ class SimulationParameters(object):
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
-                orc_Saturated = False,  # se True, ciclo saturo
+                orc_Saturated = True,  # se True, ciclo saturo
                 orc_no_Rec = False,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
