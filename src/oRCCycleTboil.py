@@ -226,6 +226,11 @@ class ORCCycleTboil(object):
                 # #Compute TDN points
                 #State 7 (Superheater -> Turbine)
                 self.T[out_sh] = T_in_C - self.params.dT_ap_phe    #T_boil_C (T_5) + self.params.dT_sh_phe
+                if T_in_C - self.params.dT_ap_phe < T_boil_C:
+                    raise ValueError('Input temperature after approach difference is below boiling temperature')
+                if T_boil_C + self.params.dT_sh_phe > T_in_C:
+                    raise ValueError('Boiling temperature plus superheating approach difference exceeds input temperature.')
+
                 self.state[out_sh] = FluidState.getStateFromPT(self.p[out_sh], self.T[out_sh], self.params.orc_fluid)
                 self.update_properties(out_sh)
 
@@ -274,6 +279,10 @@ class ORCCycleTboil(object):
                 # #Compute TDN points
                 #State 7 (Superheater -> Turbine)
                 self.T[out_sh] = T_in_C - self.params.dT_ap_phe   #T_boil_C + self.params.dT_sh_phe
+                if T_in_C - self.params.dT_ap_phe < T_boil_C:
+                    raise ValueError('Input temperature after approach difference is below boiling temperature')
+                if T_boil_C + self.params.dT_sh_phe > T_in_C:
+                    raise ValueError('Boiling temperature plus superheating approach difference exceeds input temperature.')
                 self.state[out_sh] = FluidState.getStateFromPT(self.p[out_sh], self.T[out_sh], self.params.orc_fluid)
                 self.update_properties(out_sh)
 
