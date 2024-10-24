@@ -21,7 +21,7 @@ class SimulationParameters(object):
     """SimulationParameters provides physical properties of the system."""
 
     def __init__(self,
-                working_fluid = 'water',   #geothermic fluid
+                working_fluid = 'water',   #geothermal fluid
                 orc_fluid = None,      #ORC fluid
                 m_dot_IP = None,
                 time_years = 1.,

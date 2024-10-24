@@ -352,9 +352,9 @@ class ORCCycleTboil(object):
         w_condenser_orc = q_condenser_orc * parasiticPowerFraction('condensing')
 
         # water (assume pressure 100 kPa above saturation)
-        P_sat = FluidState.getStateFromTQ(T_in_C, 0, 'Water').P_Pa
+        P_sat = FluidState.getStateFromTQ(T_in_C, 0, 'Water').P_Pa  #al posto di water, self.params.working_fuid
         cp = FluidState.getStateFromPT(P_sat + 100e3, T_in_C, 'Water').cp_JK
-        # Water state a, inlet, b, mid, c exit
+        # Water state a, inlet, b, mid, c, mid, d, exit
         T_a = T_in_C
         T_c = self.T[out_eco_subcool] + dT_pinch
         # mdot_ratio = mdot_orc / mdot_water
@@ -475,8 +475,15 @@ class ORCCycleTboil(object):
         n_points = 10
         h_array_cond = np.linspace(self.state[in_cond].h_Jkg, self.state[out_cond].h_Jkg,n_points)
         p_array_cond = np.linspace(self.state[in_cond].P_Pa, self.state[out_cond].P_Pa, n_points)
-        T_array_cond = np.array([FluidState.getStateFromPh(p1, h1, self.params.orc_fluid).T_C for p1, h1 in zip(p_array_cond, h_array_cond)])
-        T_array_cond_water = np.linspace(self.params.T_cooling_water_in, self.T_cooling_water_mid, n_points)
+        T_array_cond = np.array([self.T[in_cond], self.T[out_cond]]) #np.array([FluidState.getStateFromPh(p1, h1, self.params.orc_fluid).T_C for p1, h1 in zip(p_array_cond, h_array_cond)])
+        T_array_cond_water = np.array([self.params.T_cooling_water_in, self.T_cooling_water_mid]) #np.linspace(self.params.T_cooling_water_in, self.T_cooling_water_mid, n_points)
+
+        #Desuperheater
+        n_points = 10
+        h_array_desh = np.linspace(self.state[out_desh].h_Jkg, self.state[in_desh].h_Jkg, n_points)
+        p_array_desh = np.linspace(self.state[out_desh].P_Pa, self.state[in_desh].P_Pa, n_points)
+        T_array_desh = np.array([self.T[out_desh], self.T[in_desh]]) #np.array([FluidState.getStateFromPh(p1, h1, self.params.orc_fluid).T_C for p1, h1 in zip(p_array_desh, h_array_desh)])
+        T_array_desh_water = np.array([self.T_cooling_water_mid, T_cooling_water_out]) #np.linspace(self.T_cooling_water_mid, T_cooling_water_out, n_points)
 
         # Creazione del dizionario HXs
         HXs = {
@@ -488,6 +495,14 @@ class ORCCycleTboil(object):
                  'Q_sections': [abs(q_condenser_orc)],
                  'HX_parameters': {'HX_arrangement': ['counterflow']}  # Configurazione di scambio termico
              },
+            'desuperheater': {
+                'T1': [T_array_desh],
+                'T2': [T_array_desh_water],
+                'fluid1': [self.params.orc_fluid],  # Fluido orc
+                'fluid2': ['water'],  # Fluido utilizzato per il raffreddamento (ad esempio acqua)
+                'Q_sections': [abs(q_desuperheater_orc)],
+                'HX_parameters': {'HX_arrangement': ['counterflow']}  # Configurazione di scambio termico
+            },
             'evaporator': {
                 'T1': [T_array_boiler],
                 'T2': [T_array_PHE_geo_boiler],

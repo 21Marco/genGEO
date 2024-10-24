@@ -139,6 +139,13 @@ def PlotTQHX(HXs, HX_names=['evaporator', 'condenser', 'recuperator']):
             economizer_Q = HXs['economizer']['Q_sections'][0]  # Ottiengo il valore di Q dell'economizer
             Q = np.concatenate(([economizer_Q], Q))  # Inserisco economizer_Q all'inizio
 
+        # Addition to include the superheater with the condenser
+        if 'desuperheater' in HXs.keys() and ii == "condenser":
+            T1 = np.concatenate((T1[:-1], HXs['desuperheater']['T1'][0]))  # Concateno i valori di T1 del desuperheater alla fine di T1 del condenser, tranne l'ultimo
+            T2 = np.concatenate((T2[:-1], HXs['desuperheater']['T2'][0]))
+            desuperheater_Q = HXs['desuperheater']['Q_sections'][0]
+            Q = np.append(Q, desuperheater_Q)
+
         # if fld1 == "reactor" or fld2 == "reactor":
         #     arrangement_HX = "reactor"
         # else:
