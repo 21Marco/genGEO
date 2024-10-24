@@ -46,19 +46,21 @@ class SimulationParameters(object):
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
                 dp_dT_loss = [0, 0, 0, 0, 0, 0, 0, 0, 0], #pump, rec_cold, eco, eva, sh, turb, rec_hot, desh, cond  #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
-                dT_approach = 7.,
+                dT_approach = 7.,  #differenza T aaqua raffreddata uscita torre e aria ambiente
                 dT_pinch = 5.,
                 dT_pp_rec = 5.,  # pinch al recuperatore
                 dT_ap_phe = 10.,  # Approach al PHE
                 dT_sh_phe = 15.,  #superheater al PHE
                 dT_sc_phe = 2.,   #sub_cooling al PHE
-                dT_ap_cond = 10.,
-                dT_pp_cond = 5.,
                 eta_pump_orc = 0.9,
                 eta_turbine_orc = 0.8,
                 eta_pump_co2 = 0.9,
                 eta_turbine_co2 = 0.78,
                 cooling_mode = CoolingCondensingTowerMode.Wet,
+                T_cooling_water_in = 10.,  #T water in cond
+                dT_cooling = 0.,           #dT_cond = T_cond_out - T_cond_in
+                dT_pp_cond = 5.,
+                dp_water_condenser = 0.,
                 # cost model
                 cost_year = 2019,
                 success_rate = 0.95,
@@ -107,13 +109,15 @@ class SimulationParameters(object):
         self.dT_ap_phe = dT_ap_phe
         self.dT_sh_phe = dT_sh_phe
         self.dT_sc_phe = dT_sc_phe
-        self.dT_ap_cond = dT_ap_cond
-        self.dT_pp_cond = dT_pp_cond
         self.eta_pump_orc = eta_pump_orc
         self.eta_turbine_orc = eta_turbine_orc
         self.eta_pump_co2 = eta_pump_co2
         self.eta_turbine_co2 = eta_turbine_co2
         self.cooling_mode = cooling_mode
+        self.T_cooling_water_in = T_cooling_water_in
+        self.dT_cooling = dT_cooling
+        self.dT_pp_cond = dT_pp_cond
+        self.dp_water_condenser = dp_water_condenser
         self.cost_year = cost_year
         self.success_rate = success_rate
         self.F_OM = F_OM

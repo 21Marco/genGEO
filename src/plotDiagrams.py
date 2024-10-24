@@ -5,7 +5,7 @@ from utils.fluidState import FluidState
 import sys
 
 
-def TsDischarge(state, T, orc_fluid, orc_no_Rec, DH_water=None, arrangement_cond="counterflow"): #, info_sim=None
+def TsDischarge(state, T, orc_fluid, orc_no_Rec, DH_water=None, arrangement_cond="counterflow"):
     fig, ax = plt.subplots(1, 1) # creazione della figura e degli assi
     dT_min = 10
     T_min = min(T) - dT_min
@@ -116,23 +116,40 @@ def PlotTQHX(HXs, HX_names=['evaporator', 'condenser', 'recuperator']):
         fld1 = HXs[ii]['fluid1'][0]
         fld2 = HXs[ii]['fluid2'][0]
         Q = HXs[ii]['Q_sections'][0]
-        # if 'economizer' in HXs.keys() and ii == "evaporator":
-        #     T1 = np.append(T1[0:-1], HXs['economizer']['T1'][0])
-        #     T2 = np.append(T2[0:-1], HXs['economizer']['T2'][0])
-        #     Q = np.append(Q, HXs['economizer']['Q_sections'][0])
 
-        if fld1 == "reactor" or fld2 == "reactor":
-            arrangement_HX = "reactor"
-        else:
-            arrangement_HX = HXs[ii]["HX_parameters"]["HX_arrangement"][0]
-        PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names[nn], arrangement_HX, ax[nn], fig)
+        # Addition to include the superheater with the evaporator
+        if 'superheater' in HXs.keys() and ii == "evaporator":
+            T1 = np.concatenate((T1[:-1], HXs['superheater']['T1'][0]))  # Concateno i valori di T1 del superheater alla fine di T1 dell'evaporatore, tranne l'ultimo
+            T2 = np.concatenate((T2[:-1], HXs['superheater']['T2'][0]))
+            superheater_Q = HXs['superheater']['Q_sections'][0]
+            Q = np.append(Q, superheater_Q)
+
+        # Addition to include the subcooler with the evaporator
+        if 'subcooler' in HXs.keys() and ii == "evaporator":
+            T1 = np.concatenate((HXs['subcooler']['T1'][0][:-1], T1))  # Aggiungo i valori di T1 del subcooler, escludendo l'ultimo
+            T2 = np.concatenate((HXs['subcooler']['T2'][0][:-1], T2))  # Aggiunge i valori di T2 del subcooler, escludendo l'ultimo
+            subcooler_Q = HXs['subcooler']['Q_sections'][0]
+            Q = np.concatenate(([subcooler_Q], Q))
+
+        # Addition to include the economizer with the evaporator
+        if 'economizer' in HXs.keys() and ii == "evaporator":
+            T1 = np.concatenate((HXs['economizer']['T1'][0][:-1], T1))  # Aggiungo T1 dell'economizer (tranne l'ultimo elemento) all'inizio di T1 dell'evaporatore
+            T2 = np.concatenate((HXs['economizer']['T2'][0][:-1], T2))
+            # Sommo la Q_section dell'economizer a quella dell'evaporatore mettendola all'inizio
+            economizer_Q = HXs['economizer']['Q_sections'][0]  # Ottiengo il valore di Q dell'economizer
+            Q = np.concatenate(([economizer_Q], Q))  # Inserisco economizer_Q all'inizio
+
+        # if fld1 == "reactor" or fld2 == "reactor":
+        #     arrangement_HX = "reactor"
+        # else:
+        #     arrangement_HX = HXs[ii]["HX_parameters"]["HX_arrangement"][0]
+        PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names[nn], ax[nn], fig) #PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names[nn], arrangement_HX, ax[nn], fig)
         nn += 1
-    #plt.tight_layout()  # Assicura che ci sia un buon spazio tra i grafici
     plt.show()
     return fig
 
 
-def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, curr_ax, fig):  # Plot T-q fro HXs
+def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, curr_ax, fig):  # Plot T-q fro HXs #PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, curr_ax, fig):  # Plot T-q fro HXs
 
     str_RP = 'REFPROP::'
 
@@ -145,9 +162,9 @@ def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, curr_ax, fig):
     if len(fld2) > 10:
         fld2 = fld2[:9] + "."
 
-    if arrangement_HX != "counterflow" and arrangement_HX != "reactor":
-        T1 = T1[::-1]
-        T2 = T2[::-1]
+    # if arrangement_HX != "counterflow" and arrangement_HX != "reactor":
+    #     T1 = T1[::-1]
+    #     T2 = T2[::-1]
 
     if all(T1 > T2):
         TH = T1
@@ -160,10 +177,10 @@ def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, curr_ax, fig):
         TC = T1
         fldC = fld1
 
-    if arrangement_HX == 'counterflow':
-        arrHX = 'cf.'  # Counterflow
-    else:
-        arrHX = 'cc.'  # Co-current (parallel)
+    # if arrangement_HX == 'counterflow':
+    #     arrHX = 'cf.'  # Counterflow
+    # else:
+    #     arrHX = 'cc.'  # Co-current (parallel)
 
     n_sections = len(TH)
     Q_cumul = np.concatenate(([0], np.cumsum(Q * np.ones(n_sections - 1))))
@@ -173,7 +190,7 @@ def PlotTQSingle(T1, T2, Q, fld1, fld2, HX_names, arrangement_HX, curr_ax, fig):
     lC, = curr_ax.plot(Q_cumul, TC)
     lH.set_color('red')
     lC.set_color('Blue')
-    curr_ax.set_title(HX_names + " - " + arrHX)
+    curr_ax.set_title(HX_names) #curr_ax.set_title(HX_names + " - " + arrHX)
     curr_ax.legend([lH, lC], [fldH, fldC])
     curr_ax.set_xlabel('Thermal power [kW]')
     curr_ax.set_ylabel('Temperature [°C]')
