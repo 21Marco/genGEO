@@ -106,35 +106,46 @@ class ORCCycleTboil(object):
 
         #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
         #Condenser
-        if self.params.dp_dT_loss[8] > 0:
-            self.p[out_desh] = self.state[out_cond].P_Pa / (1 - self.params.dp_dT_loss[8])  # dp for the condenser
+        if self.params.dp_dT_loss['loss_cond'] > 0:
+            self.p[out_desh] = self.state[out_cond].P_Pa / (1 - self.params.dp_dT_loss['loss_cond'])  # dp for the condenser
         else:
-            self.T[out_desh] = self.state[out_cond].T_C + self.params.dp_dT_loss[8]
+            self.T[out_desh] = self.state[out_cond].T_C + self.params.dp_dT_loss['loss_cond']
             self.p[out_desh] = FluidState.getStateFromTQ(self.T[out_desh], 1, self.params.orc_fluid).P_Pa
 
         #Desuperheater
-        if self.params.dp_dT_loss[7] > 0:
-            self.p[in_desh] = self.p[out_desh] / (1 - self.params.dp_dT_loss[7])  # dp for the desuperheater
+        if self.params.dp_dT_loss['loss_desh'] > 0:
+            self.p[in_desh] = self.p[out_desh] / (1 - self.params.dp_dT_loss['loss_desh'])  # dp for the desuperheater
         else:
-            self.p[in_desh] = self.params.dp_dT_loss[7] + self.p[out_desh]
+            self.p[in_desh] = self.params.dp_dT_loss['loss_desh'] + self.p[out_desh]
 
         #Boiler/Evaporator
-        if self.params.dp_dT_loss[3] > 0:
-            self.p[out_eco_subcool] = self.state[out_eco_subcool].P_Pa / (1 - self.params.dp_dT_loss[3])  # dp for the boiler
+        if self.params.dp_dT_loss['loss_eva'] > 0:
+            self.p[out_eco_subcool] = self.state[out_eco_subcool].P_Pa / (1 - self.params.dp_dT_loss['loss_eva'])  # dp for the boiler
         else:
-            self.T[out_eco_subcool] = self.state[out_eva].T_C + self.params.dp_dT_loss[3]  # - dT_sc
+            self.T[out_eco_subcool] = self.state[out_eva].T_C + self.params.dp_dT_loss['loss_eva']  # - dT_sc
             self.p[out_eco_subcool] = FluidState.getStateFromTQ(self.T[out_eco_subcool], 0, self.params.orc_fluid).P_Pa
 
         #Preheater/Economizer
-        if self.params.dp_dT_loss[2] > 0:
-            self.p[in_eco] = self.p[out_eco_subcool] / (1 - self.params.dp_dT_loss[2])  # dp for the pre-heater
+        if self.params.dp_dT_loss['loss_eco'] > 0:
+            self.p[in_eco] = self.p[out_eco_subcool] / (1 - self.params.dp_dT_loss['loss_eco'])  # dp for the pre-heater
         else:
-            self.p[in_eco] = self.params.dp_dT_loss[2] + self.p[out_eco_subcool]
+            self.p[in_eco] = self.params.dp_dT_loss['loss_eco'] + self.p[out_eco_subcool]
 
-        # State 10 (Desuperheater -> Condenser)
-        # saturated vapor
+        #State 10 (Desuperheater -> Condenser)
+        #saturated vapor
         self.state[out_desh] = FluidState.getStateFromPQ(self.p[out_desh], 1, self.params.orc_fluid)
         self.update_properties(out_desh)
+
+        #State 5 (Preheater -> Boiler)
+        #saturated liquid
+        self.state[out_eco_subcool] = FluidState.getStateFromPQ(self.p[out_eco_subcool], 0, self.params.orc_fluid)
+        self.update_properties(out_eco_subcool)
+
+        #State 2 (Pump -> Recuperator)
+        h_out_pump_s = FluidState.getStateFromPS(self.p[in_eco], self.state[out_cond].s_JK, self.params.orc_fluid).h_Jkg
+        self.h[out_pump] = self.state[out_cond].h_Jkg - ((self.state[out_cond].h_Jkg - h_out_pump_s) / self.params.eta_pump_orc)
+        self.state[out_pump] = FluidState.getStateFromPh(self.p[in_eco], self.h[out_pump], self.params.orc_fluid)
+        self.update_properties(out_pump)
 
         if self.params.orc_Saturated:  # Saturated ORC Cycle (without SH)
             if self.params.orc_no_Rec:  # without Recuperator
@@ -144,18 +155,9 @@ class ORCCycleTboil(object):
                 self.state[out_sh] = self.state[out_eva]
                 self.update_properties(out_sh)
 
-                #State 5 (Preheater -> Boiler)
-                #saturated liquid
-                self.state[out_eco_subcool] = FluidState.getStateFromPQ(self.p[out_eco_subcool], 0, self.params.orc_fluid)
-                self.update_properties(out_eco_subcool)
-
-                #State 2 = 3 (Pump -> Preheater)
-                h_out_pump_s= FluidState.getStateFromPS(self.p[in_eco], self.state[out_cond].s_JK, self.params.orc_fluid).h_Jkg
-                self.h[out_pump]= self.state[out_cond].h_Jkg - ((self.state[out_cond].h_Jkg - h_out_pump_s) / self.params.eta_pump_orc)
-                self.state[out_pump] = FluidState.getStateFromPh(self.p[in_eco], self.h[out_pump], self.params.orc_fluid)
+                #State 3 = 2 (Pump -> Preheater)
                 self.state[in_eco] = self.state[out_pump]
                 self.update_properties(in_eco)
-                self.update_properties(out_pump)
 
                 #State 9 = 8 (Turbine -> Desuperheater)
                 h_out_turb_s = FluidState.getStateFromPS(self.p[in_desh], self.state[out_eva].s_JK, self.params.orc_fluid).h_Jkg
@@ -169,33 +171,22 @@ class ORCCycleTboil(object):
 
                 #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
                 #Recuperator hot side
-                if self.params.dp_dT_loss[6] > 0:
-                    self.p[out_turb] = self.p[out_rec_hot] / (1 - self.params.dp_dT_loss[6])  # dp for the hot side recuperator
+                if self.params.dp_dT_loss['loss_rec_hot'] > 0:
+                    self.p[out_turb] = self.p[out_rec_hot] / (1 - self.params.dp_dT_loss['loss_rec_hot'])  # dp for the hot side recuperator
                 else:
-                    self.p[out_turb] = self.params.dp_dT_loss[6] + self.p[out_rec_hot]
+                    self.p[out_turb] = self.params.dp_dT_loss['loss_rec_hot'] + self.p[out_rec_hot]
 
                 #Recuperator cold side
-                if self.params.dp_dT_loss[1] > 0:
-                    self.p[out_pump] = self.p[out_rec_cold] * (1 - self.params.dp_dT_loss[1])  # dp for the recuperator cold side
+                if self.params.dp_dT_loss['loss_rec_cold'] > 0:
+                    self.p[out_pump] = self.p[out_rec_cold] * (1 - self.params.dp_dT_loss['loss_rec_cold'])  # dp for the recuperator cold side
                 else:
-                    self.p[out_pump] = self.p[out_rec_cold] - self.params.dp_dT_loss[1]
+                    self.p[out_pump] = self.p[out_rec_cold] - self.params.dp_dT_loss['loss_rec_cold']
 
                 # #Compute the TDN points
                 #State 7 = 6 (Turbine -> Recuperator hot side)
                 self.state[out_sh] = self.state[out_eva]
                 self.update_properties(out_sh)
                 self.update_properties(out_eva)
-
-                #State 5 (Preheater -> Boiler)
-                #saturated liquid
-                self.state[out_eco_subcool] = FluidState.getStateFromPQ(self.p[out_eco_subcool], 0, self.params.orc_fluid)
-                self.update_properties(out_eco_subcool)
-
-                #State 2 (Pump -> Recuperator cold side)
-                h_out_pump_s = FluidState.getStateFromPS(self.p[out_pump], self.state[out_cond].s_JK, self.params.orc_fluid).h_Jkg
-                self.h[out_pump] = self.state[out_cond].h_Jkg - ((self.state[out_cond].h_Jkg - h_out_pump_s) / self.params.eta_pump_orc)
-                self.state[out_pump] = FluidState.getStateFromPh(self.p[out_pump], self.h[out_pump], self.params.orc_fluid)
-                self.update_properties(out_pump)
 
                 #State 3 (Recuperator cold side -> Preheater)
                 self.T[out_rec_cold] = self.state[out_pump].T_C + self.params.dT_pp_rec
@@ -218,10 +209,10 @@ class ORCCycleTboil(object):
 
                 #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
                 #Superheater
-                if self.params.dp_dT_loss[4] > 0:
-                    self.p[out_sh] = self.state[out_eva].P_Pa * (1 - self.params.dp_dT_loss[4])  # dp for the superheater
+                if self.params.dp_dT_loss['loss_sh'] > 0:
+                    self.p[out_sh] = self.state[out_eva].P_Pa * (1 - self.params.dp_dT_loss['loss_sh'])  # dp for the superheater
                 else:
-                    self.p[out_sh] = self.state[out_eva].P_Pa - self.params.dp_dT_loss[4]
+                    self.p[out_sh] = self.state[out_eva].P_Pa - self.params.dp_dT_loss['loss_sh']
 
                 # #Compute TDN points
                 #State 7 (Superheater -> Turbine)
@@ -229,7 +220,7 @@ class ORCCycleTboil(object):
                 if T_in_C - self.params.dT_ap_phe < T_boil_C:
                     raise ValueError('GenGeo::ORCCycleTboil:Input temperature after approach difference is below boiling temperature')
                 if T_boil_C + self.params.dT_sh_phe > T_in_C:
-                    raise ValueError('GenGeo::ORCCycleTboil:Boiling temperature plus superheating approach difference exceeds input temperature.')
+                    raise ValueError('GenGeo::ORCCycleTboil:Boiling temperature plus superheating approach difference exceeds input temperature')
 
                 self.state[out_sh] = FluidState.getStateFromPT(self.p[out_sh], self.T[out_sh], self.params.orc_fluid)
                 self.update_properties(out_sh)
@@ -242,39 +233,30 @@ class ORCCycleTboil(object):
                 self.update_properties(out_rec_hot)
                 self.update_properties(out_turb)
 
-                #State 2 = 3 (Pump -> Preheater)
-                h_out_pump_s = FluidState.getStateFromPS(self.p[in_eco], self.state[out_cond].s_JK, self.params.orc_fluid).h_Jkg
-                self.h[out_pump] = self.state[out_cond].h_Jkg - ((self.state[out_cond].h_Jkg - h_out_pump_s) / self.params.eta_pump_orc)
-                self.state[out_pump] = FluidState.getStateFromPh(self.p[in_eco], self.h[out_pump], self.params.orc_fluid)
+                # #State 3 = 2 (Pump -> Preheater)
                 self.state[in_eco] = self.state[out_pump]
                 self.update_properties(in_eco)
-                self.update_properties(out_pump)
-
-                #State 5 (Preheater -> Boiler)
-                #saturated liquid
-                self.state[out_eco_subcool] = FluidState.getStateFromPQ(self.p[out_eco_subcool], 0, self.params.orc_fluid)
-                self.update_properties(out_eco_subcool)
 
             else:  # ciclo orc SH con rec
 
                 #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
                 #Superheater
-                if self.params.dp_dT_loss[4] > 0:
-                    self.p[out_sh] = self.state[out_eva].P_Pa * (1 - self.params.dp_dT_loss[4])  # dp for the superheater
+                if self.params.dp_dT_loss['loss_sh'] > 0:
+                    self.p[out_sh] = self.state[out_eva].P_Pa * (1 - self.params.dp_dT_loss['loss_sh'])  # dp for the superheater
                 else:
-                    self.p[out_sh] = self.state[out_eva].P_Pa - self.params.dp_dT_loss[4]
+                    self.p[out_sh] = self.state[out_eva].P_Pa - self.params.dp_dT_loss['loss_sh']
 
                 #Recuperator hot side
-                if self.params.dp_dT_loss[6] > 0:
-                    self.p[out_turb] = self.p[out_rec_hot] / (1 - self.params.dp_dT_loss[6])  # dp for the hot side recuperator
+                if self.params.dp_dT_loss['loss_rec_hot'] > 0:
+                    self.p[out_turb] = self.p[out_rec_hot] / (1 - self.params.dp_dT_loss['loss_rec_hot'])  # dp for the hot side recuperator
                 else:
-                    self.p[out_turb] = self.params.dp_dT_loss[6] + self.p[out_rec_hot]
+                    self.p[out_turb] = self.params.dp_dT_loss['loss_rec_hot'] + self.p[out_rec_hot]
 
                 #Recuperator cold side
-                if self.params.dp_dT_loss[1] > 0:
-                    self.p[out_pump] = self.p[out_rec_cold] * (1 - self.params.dp_dT_loss[1])  # dp for the cold side recuperator
+                if self.params.dp_dT_loss['loss_rec_cold'] > 0:
+                    self.p[out_pump] = self.p[out_rec_cold] * (1 - self.params.dp_dT_loss['loss_rec_cold'])  # dp for the cold side recuperator
                 else:
-                    self.p[out_pump] = self.p[out_rec_cold] - self.params.dp_dT_loss[1]
+                    self.p[out_pump] = self.p[out_rec_cold] - self.params.dp_dT_loss['loss_rec_cold']
 
                 # #Compute TDN points
                 #State 7 (Superheater -> Turbine)
@@ -292,17 +274,6 @@ class ORCCycleTboil(object):
                 self.state[out_turb] = FluidState.getStateFromPh(self.p[out_turb], self.h[out_turb], self.params.orc_fluid)
                 self.update_properties(out_turb)
 
-                #State 5 (Preheater -> Boiler)
-                #saturated liquid
-                self.state[out_eco_subcool] = FluidState.getStateFromPQ(self.p[out_eco_subcool], 0, self.params.orc_fluid)
-                self.update_properties(out_eco_subcool)
-
-                #State 2 (Pump -> Recuperator)
-                h_out_pump_s = FluidState.getStateFromPS(self.p[out_pump], self.state[out_cond].s_JK, self.params.orc_fluid).h_Jkg
-                self.h[out_pump] = self.state[out_cond].h_Jkg - ((self.state[out_cond].h_Jkg - h_out_pump_s) / self.params.eta_pump_orc)
-                self.state[out_pump] = FluidState.getStateFromPh(self.p[out_pump], self.h[out_pump], self.params.orc_fluid)
-                self.update_properties(out_pump)
-
                 #State 3 (Recuperator cold -> Preheater)
                 self.T[out_rec_cold] = self.state[out_pump].T_C + self.params.dT_pp_rec
                 self.state[out_rec_cold] = FluidState.getStateFromPT(self.p[out_rec_cold], self.T[out_rec_cold], self.params.orc_fluid)
@@ -319,7 +290,7 @@ class ORCCycleTboil(object):
         self.update_properties(out_eco_preheat)
 
         #Chiamata a TsDischarge
-        #TsDischarge(self.state, self.T, self.params.orc_fluid, self.params.orc_no_Rec)
+        TsDischarge(self.state, self.T, self.params.orc_fluid, self.params.orc_no_Rec)
 
         results = PowerPlantOutput()
 
@@ -353,13 +324,14 @@ class ORCCycleTboil(object):
 
         # water (assume pressure 100 kPa above saturation)
         P_sat = FluidState.getStateFromTQ(T_in_C, 0, 'Water').P_Pa  #al posto di water, self.params.working_fuid
-        cp = FluidState.getStateFromPT(P_sat + 100e3, T_in_C, 'Water').cp_JK
+        cp = FluidState.getStateFromPT(P_sat + 100e3, T_in_C, 'Water').cp_JK  # al posto di P_sat + 100e3 mettere la P_out_well_geothermal_fluid, initialState.P_Pa
         # Water state a, inlet, b, mid, c, mid, d, exit
         T_a = T_in_C
         T_c = self.T[out_eco_subcool] + dT_pinch
         # mdot_ratio = mdot_orc / mdot_water
         mdot_ratio = cp * (T_a - T_c) / (q_boiler_orc + q_superheater_orc)
-        T_d = T_c - mdot_ratio * q_preheater_orc / cp
+        T_d = T_c - mdot_ratio * q_preheater_orc / cp  #injection temperature
+        #T_d = T_c - mdot_ratio / cp * (self.h[out_eco_preheat] - self.h[out_rec_cold])
 
         # check that T_d isn't below pinch constraint
         if T_d < (self.T[out_rec_cold] + dT_pinch):

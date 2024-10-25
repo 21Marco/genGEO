@@ -41,16 +41,26 @@ class SimulationParameters(object):
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
-                orc_Saturated = True,  # se True, ciclo saturo
+                orc_Saturated = False,  # se True, ciclo saturo
                 orc_no_Rec = False,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
-                dp_dT_loss = [0, 0, 0, 0, 0, 0, 0, 0, 0], #pump, rec_cold, eco, eva, sh, turb, rec_hot, desh, cond  #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
-                dT_approach = 7.,  #differenza T aaqua raffreddata uscita torre e aria ambiente
+                dp_dT_loss = {         #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
+                     'loss_pump': 0,
+                     'loss_rec_cold': 0,
+                     'loss_eco': 0,
+                     'loss_eva': 0,
+                     'loss_sh': 0,
+                     'loss_turb': 0,
+                     'loss_rec_hot': 0,
+                     'loss_desh': 0,
+                     'loss_cond': 0
+                },
+                dT_approach = 7.,  #differenza T acqua raffreddata uscita torre e aria ambiente
                 dT_pinch = 5.,
                 dT_pp_rec = 5.,  # pinch al recuperatore
                 dT_ap_phe = 10.,  # Approach al PHE
-                dT_sh_phe = 15.,  #superheater al PHE
+                dT_sh_phe = 3.84,  #superheater al PHE
                 dT_sc_phe = 2.,   #sub_cooling al PHE
                 eta_pump_orc = 0.9,
                 eta_turbine_orc = 0.8,

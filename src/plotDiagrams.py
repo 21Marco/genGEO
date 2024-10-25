@@ -79,24 +79,24 @@ def TsDischarge(state, T, orc_fluid, orc_no_Rec, DH_water=None, arrangement_cond
         ax.plot(s_array_rec_cold, T_array_rec_cold, linewidth=1, linestyle='--', color=color_rec)
 
 
-    if DH_water is not None:
-        # District heating water
-        if arrangement_cond == "parallel":
-            T_water_array = np.array([DH_water["T_DH_out"][0], DH_water["T_DH_in"][0]])
-            labels_water = ["DH,out", "DH,in"]
-        elif arrangement_cond == "counterflow":
-            T_water_array = np.array([DH_water["T_DH_in"][0], DH_water["T_DH_out"][0]])
-            labels_water = ["DH,in", "DH,out"]
-        else:
-            sys.exit("condenser HX arrangement is not defined")
-        s_water_array = np.array([state[0].s_JK, state[in_desh].s_JK])
-        # s_water_array = np.array([tdn_streams[0, 4], tdn_streams[in_desh, 4]])
-        ax.plot(s_water_array, T_water_array, linewidth=1, color=color_water)
-        ax.scatter(s_water_array, T_water_array, 10, color=color_water)
-        ax.text(s_water_array[0] - 0.02, T_water_array[0], labels_water[0], color=color_water, fontsize=7,
-                verticalalignment='bottom', horizontalalignment='right')
-        ax.text(s_water_array[1] + 0.02, T_water_array[1], labels_water[1], color=color_water, fontsize=7,
-                verticalalignment='top', horizontalalignment='left')
+    # if DH_water is not None:
+    #     # District heating water
+    #     if arrangement_cond == "parallel":
+    #         T_water_array = np.array([DH_water["T_DH_out"][0], DH_water["T_DH_in"][0]])
+    #         labels_water = ["DH,out", "DH,in"]
+    #     elif arrangement_cond == "counterflow":
+    #         T_water_array = np.array([DH_water["T_DH_in"][0], DH_water["T_DH_out"][0]])
+    #         labels_water = ["DH,in", "DH,out"]
+    #     else:
+    #         sys.exit("condenser HX arrangement is not defined")
+    #     s_water_array = np.array([state[0].s_JK, state[in_desh].s_JK])
+    #     # s_water_array = np.array([tdn_streams[0, 4], tdn_streams[in_desh, 4]])
+    #     ax.plot(s_water_array, T_water_array, linewidth=1, color=color_water)
+    #     ax.scatter(s_water_array, T_water_array, 10, color=color_water)
+    #     ax.text(s_water_array[0] - 0.02, T_water_array[0], labels_water[0], color=color_water, fontsize=7,
+    #             verticalalignment='bottom', horizontalalignment='right')
+    #     ax.text(s_water_array[1] + 0.02, T_water_array[1], labels_water[1], color=color_water, fontsize=7,
+    #             verticalalignment='top', horizontalalignment='left')
 
     # set axis and title
     ax.set_xlabel("Specific entropy [kJ/kgK]")
