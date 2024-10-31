@@ -188,21 +188,21 @@ class ORCCycleTboil(object):
                 self.update_properties(out_sh)
                 self.update_properties(out_eva)
 
-                #State 3 (Recuperator cold side -> Preheater)
-                self.T[out_rec_cold] = self.state[out_pump].T_C + self.params.dT_pp_rec
-                self.state[out_rec_cold] = FluidState.getStateFromPT(self.p[out_rec_cold], self.T[out_rec_cold], self.params.orc_fluid)
-                self.update_properties(out_rec_cold)
-
                 #State 8 (Turbine -> Recuperator)
-                h_out_turb_s = FluidState.getStateFromPS(self.p[in_rec_cold], self.state[in_turb].s_JK, self.params.orc_fluid).h_Jkg
-                self.h[out_turb] = self.state[in_turb].h_Jkg - self.params.eta_turbine_orc * (self.state[in_turb].h_Jkg - h_out_turb_s)
+                h_out_turb_s = FluidState.getStateFromPS(self.p[in_rec_hot], self.state[out_eva].s_JK, self.params.orc_fluid).h_Jkg
+                self.h[out_turb] = self.state[out_eva].h_Jkg - self.params.eta_turbine_orc * (self.state[out_eva].h_Jkg - h_out_turb_s)
                 self.state[out_turb] = FluidState.getStateFromPh(self.p[out_turb], self.h[out_turb], self.params.orc_fluid)
                 self.update_properties(out_turb)
 
                 #State 9 (Recuperator hot -> Desuperheater)
-                self.h[out_rec_hot] = self.h[out_turb] - self.state[out_rec_cold].h_Jkg + self.h[out_pump]
-                self.state[out_rec_hot] = FluidState.getStateFromPh(self.p[out_rec_hot], self.h[out_rec_hot], self.params.orc_fluid)
+                self.T[out_rec_hot] = self.state[out_pump].T_C + self.params.dT_pp_rec
+                self.state[out_rec_hot] = FluidState.getStateFromPT(self.p[out_rec_hot], self.T[out_rec_hot], self.params.orc_fluid)
                 self.update_properties(out_rec_hot)
+
+                # State 3 (Recuperator cold side -> Preheater)
+                self.h[out_rec_cold] = self.h[out_turb] - self.state[out_rec_hot].h_Jkg + self.h[out_pump]
+                self.state[out_rec_cold] = FluidState.getStateFromPh(self.p[out_rec_cold], self.h[out_rec_cold], self.params.orc_fluid)
+                self.update_properties(out_rec_cold)
 
         else:  # ORC Cycle with SH
             if self.params.orc_no_Rec:  # without Recuperator
@@ -279,9 +279,14 @@ class ORCCycleTboil(object):
                 self.state[out_turb] = FluidState.getStateFromPh(self.p[out_turb], self.h[out_turb], self.params.orc_fluid)
                 self.update_properties(out_turb)
 
+                # State 9 (Recuperator hot -> Desuperheater)
+                self.T[out_rec_hot] = self.state[out_pump].T_C + self.params.dT_pp_rec
+                self.state[out_rec_hot] = FluidState.getStateFromPT(self.p[out_rec_hot], self.T[out_rec_hot], self.params.orc_fluid)
+                self.update_properties(out_rec_hot)
+
                 #State 3 (Recuperator cold -> Preheater)
-                self.T[out_rec_cold] = self.state[out_pump].T_C + self.params.dT_pp_rec
-                self.state[out_rec_cold] = FluidState.getStateFromPT(self.p[out_rec_cold], self.T[out_rec_cold], self.params.orc_fluid)
+                self.h[out_rec_cold] = self.h[out_turb] - self.state[out_rec_hot].h_Jkg + self.h[out_pump]
+                self.state[out_rec_cold] = FluidState.getStateFromPh(self.p[out_rec_cold], self.h[out_rec_cold], self.params.orc_fluid)
                 self.update_properties(out_rec_cold)
 
                 #State 9 (Recuperator hot -> Desuperheater)
@@ -341,7 +346,7 @@ class ORCCycleTboil(object):
         # check that T_d isn't below pinch constraint
         if T_d < (self.T[out_rec_cold] + dT_pinch):
             # pinch constraint is here, not at c
-            # outlet is pump temp plus pinch
+            # outlet is rec cold temp plus pinch
             T_d = self.T[out_rec_cold] + dT_pinch
             R = q_boiler_orc / (q_boiler_orc + q_preheater_orc)
             T_c = T_a - (T_a - T_d) * R
