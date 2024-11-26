@@ -34,14 +34,14 @@ class SimulationParameters(object):
                 dT_dz = 0.035,
                 silica_precipitation = False,
                 T_surface_rock = 15,
-                T_ambient_C = 15.,
+                T_ambient_C = 20.,
                 reservoir_thickness = 100.,
                 permeability = 1.0e-15 * 15000 / 100., # permeability = transmissivity / thickness
                 wellFieldType = WellFieldType._5Spot_SharedNeighbor,
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
-                orc_Saturated = True,  # se True, ciclo saturo
+                orc_Saturated = False,  # se True, ciclo saturo
                 orc_no_Rec = False,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
@@ -58,7 +58,7 @@ class SimulationParameters(object):
                 dT_pinch = 5.,
                 dT_pp_rec = 5.,  # pinch al recuperatore
                 dT_ap_phe = 10.,  # Approach al PHE
-                dT_sh_phe = 3.84,  #superheater al PHE
+                dT_sh_phe = 10.,  #superheater al PHE
                 dT_sc_phe = 2.,   #sub_cooling al PHE
                 eta_pump_orc = 0.9,
                 eta_turbine_orc = 0.8,
@@ -69,6 +69,18 @@ class SimulationParameters(object):
                 dT_cooling = 0.,           #dT_cond = T_cond_out - T_cond_in
                 dT_pp_cond = 5.,
                 dp_water_condenser = 0.,
+                # cooling tower
+                dT_water_ct = 7.,  # DT water in the cooling tower
+                cp_water = 4186,  # J/kgK
+                dP_ct = 200000, #Pa
+                eta_me_pump = 0.94,  #electrical mechanical efficiency
+                eta_hydr_pump = 0.75,  #hydraulic efficiency
+                #eta_is_pump = 0.8,    #isoentropic efficiency
+                rho_water = 1000,   #kg/m3
+                eta_ct = 0.85,     #efficiency cooling tower
+                RH_in = 0.6,    #relative humidity
+                T_in_water_ct = 15.,
+                dT_max = 10.,
                 # cost model
                 cost_year = 2019,
                 success_rate = 0.95,
@@ -126,6 +138,16 @@ class SimulationParameters(object):
         self.dT_cooling = dT_cooling
         self.dT_pp_cond = dT_pp_cond
         self.dp_water_condenser = dp_water_condenser
+        self.dT_water_ct = dT_water_ct
+        self.cp_water = cp_water
+        self.dP_ct = dP_ct
+        self.eta_me_pump = eta_me_pump
+        self.eta_hydr_pump = eta_hydr_pump
+        self.rho_water = rho_water
+        self.eta_ct = eta_ct
+        self.RH_in = RH_in
+        self.T_in_water_ct = T_in_water_ct
+        self.dT_max = dT_max
         self.cost_year = cost_year
         self.success_rate = success_rate
         self.F_OM = F_OM
