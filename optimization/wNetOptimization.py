@@ -8,7 +8,6 @@ from pymoo.optimize import minimize
 from pymoo.core.problem import Problem
 from src.oRCCycleTboil import ORCCycleTboil
 from models.simulationParameters import SimulationParameters
-#from utils.fluidState import FluidState
 
 # Inizializzo i parametri con il fluido desiderato e creo il ciclo ORC passando i parametri configurati
 params = SimulationParameters(orc_fluid='R245fa')

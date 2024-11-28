@@ -34,7 +34,8 @@ class SimulationParameters(object):
                 dT_dz = 0.035,
                 silica_precipitation = False,
                 T_surface_rock = 15,
-                T_ambient_C = 20.,
+                T_ambient_C = 15.,
+                use_wet_bulb = True,  #se True uso questo metodo
                 reservoir_thickness = 100.,
                 permeability = 1.0e-15 * 15000 / 100., # permeability = transmissivity / thickness
                 wellFieldType = WellFieldType._5Spot_SharedNeighbor,
@@ -58,10 +59,10 @@ class SimulationParameters(object):
                 dT_pinch = 5.,
                 dT_pp_rec = 5.,  # pinch al recuperatore
                 dT_ap_phe = 10.,  # Approach al PHE
-                dT_sh_phe = 10.,  #superheater al PHE
+                dT_sh_phe = 0.,  #superheater al PHE
                 dT_sc_phe = 2.,   #sub_cooling al PHE
-                eta_pump_orc = 0.9,
-                eta_turbine_orc = 0.8,
+                eta_pump_orc = 0.75,   #isoentropic
+                eta_turbine_orc = 0.8,   #isoentropic
                 eta_pump_co2 = 0.9,
                 eta_turbine_co2 = 0.78,
                 cooling_mode = CoolingCondensingTowerMode.Wet,
@@ -71,6 +72,8 @@ class SimulationParameters(object):
                 dp_water_condenser = 0.,
                 # cooling tower
                 dT_water_ct = 7.,  # DT water in the cooling tower
+                dT_ct = 5.,
+                dT_pp1_ct = 1.,
                 cp_water = 4186,  # J/kgK
                 dP_ct = 200000, #Pa
                 eta_me_pump = 0.94,  #electrical mechanical efficiency
@@ -79,7 +82,7 @@ class SimulationParameters(object):
                 rho_water = 1000,   #kg/m3
                 eta_ct = 0.85,     #efficiency cooling tower
                 RH_in = 0.6,    #relative humidity
-                T_in_water_ct = 15.,
+                T_in_water_ct = 10.,
                 dT_max = 10.,
                 # cost model
                 cost_year = 2019,
@@ -113,6 +116,7 @@ class SimulationParameters(object):
         self.silica_precipitation = silica_precipitation
         self.T_surface_rock = T_surface_rock
         self.T_ambient_C = T_ambient_C
+        self.use_wet_bulb = use_wet_bulb
         self.reservoir_thickness = reservoir_thickness
         self.permeability = permeability
         self.wellFieldType = wellFieldType
@@ -138,6 +142,8 @@ class SimulationParameters(object):
         self.dT_cooling = dT_cooling
         self.dT_pp_cond = dT_pp_cond
         self.dp_water_condenser = dp_water_condenser
+        self.dT_ct = dT_ct
+        self.dT_pp1_ct = dT_pp1_ct
         self.dT_water_ct = dT_water_ct
         self.cp_water = cp_water
         self.dP_ct = dP_ct

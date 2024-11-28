@@ -60,7 +60,8 @@ class ORCCycleTboil(object):
         T_wb = psy.GetTWetBulbFromRelHum(self.params.T_ambient_C, self.params.RH_in, 101325)
         return T_wb
 
-    def solve(self, initialState, T_boil_C = False, dT_pinch = False):
+    def solve(self, initialState, T_boil_C = False, dT_pinch = False, dT_ap_phe = False):
+        #print(f"DEBUG: Entrato in solve con T_boil_C={T_boil_C}, dT_ap_phe={dT_ap_phe}")
 
         T_in_C = initialState.T_C
 
@@ -69,6 +70,10 @@ class ORCCycleTboil(object):
 
         if not dT_pinch:
             dT_pinch = np.interp(T_in_C, self.data[self.params.opt_mode][self.params.orc_fluid][:,0], self.data[self.params.opt_mode][self.params.orc_fluid][:,2])
+
+        # if not dT_ap_phe:
+        #     dT_ap_phe = self.params.dT_ap_phe
+        #     print(f"Current dT_ap_phe in solve: {dT_ap_phe}")
 
         # run some checks  if T_in_C and T_boil_C are valid
         if np.isnan(T_in_C):
@@ -93,7 +98,14 @@ class ORCCycleTboil(object):
         if T_boil_C > self.T_boil_max:
             raise Exception('GenGeo::ORCCycleTboil:Tboil_Too_Large - Boiling temperature of %s is greater than maximum allowed of %s.'%(T_boil_C, self.T_boil_max))
 
-        T_condense_C = self.params.T_ambient_C + self.params.dT_approach
+        #Initialization of condense temperature
+        if self.params.use_wet_bulb:
+            T_wb = self.calculate_wet_bulb_temperature()  # Temperatura di bulbo umido dell'aria in ingresso
+            T_in_water_ct = T_wb + self.params.dT_ct
+            T_out_water_ct = T_in_water_ct + self.params.dT_water_ct
+            T_condense_C = T_out_water_ct + self.params.dT_pp1_ct
+        else:
+            T_condense_C = self.params.T_ambient_C + self.params.dT_approach
 
         #Creation of a list for the 10 tdn points
         self.state = [None] * 10
@@ -229,11 +241,11 @@ class ORCCycleTboil(object):
                 #State 7 (Superheater -> Turbine)
                 if self.params.dT_sh_phe == 0:
                     self.T[out_sh] = T_in_C - self.params.dT_ap_phe
-                    if T_in_C - self.params.dT_ap_phe < T_boil_C:
+                    if self.T[out_sh] < T_boil_C:
                         raise ValueError( 'GenGeo::ORCCycleTboil:Input temperature after approach difference is below boiling temperature')
                 else:
                     self.T[out_sh] = T_boil_C + self.params.dT_sh_phe
-                    if T_boil_C + self.params.dT_sh_phe > T_in_C:
+                    if self.T[out_sh] > T_in_C:
                         raise ValueError('GenGeo::ORCCycleTboil:Boiling temperature plus superheating approach difference exceeds input temperature')
                 self.state[out_sh] = FluidState.getStateFromPT(self.p[out_sh], self.T[out_sh], self.params.orc_fluid)
                 self.update_properties(out_sh)
@@ -275,11 +287,11 @@ class ORCCycleTboil(object):
                 #State 7 (Superheater -> Turbine)
                 if self.params.dT_sh_phe == 0:
                     self.T[out_sh] = T_in_C - self.params.dT_ap_phe
-                    if T_in_C - self.params.dT_ap_phe < T_boil_C:
+                    if self.T[out_sh] < T_boil_C:
                         raise ValueError('GenGeo::ORCCycleTboil:Input temperature after approach difference is below boiling temperature')
                 else:
                     self.T[out_sh] = T_boil_C + self.params.dT_sh_phe
-                    if T_boil_C + self.params.dT_sh_phe > T_in_C:
+                    if self.T[out_sh] > T_in_C:
                         raise ValueError('GenGeo::ORCCycleTboil:Boiling temperature plus superheating approach difference exceeds input temperature')
                 self.state[out_sh] = FluidState.getStateFromPT(self.p[out_sh], self.T[out_sh], self.params.orc_fluid)
                 self.update_properties(out_sh)
@@ -334,33 +346,26 @@ class ORCCycleTboil(object):
         w_desuperheater_orc = q_desuperheater_orc * parasiticPowerFraction('cooling')
         w_condenser_orc = q_condenser_orc * parasiticPowerFraction('condensing')
 
-        q_cooling_orc = q_condenser_orc + q_desuperheater_orc    #(q_condenser_orc + q_desuperheater_orc) * self.params.eta_ct
+        q_cooling_orc = -(q_condenser_orc + q_desuperheater_orc)
         mdot_ratio_water_ct = q_cooling_orc/(self.params.cp_water * self.params.dT_water_ct)
-        w_pump_cooling_tower = (self.params.dP_ct * mdot_ratio_water_ct)/(self.params.rho_water * self.params.eta_me_pump * self.params.eta_hydr_pump)
+        w_pump_cooling_tower = -(self.params.dP_ct * mdot_ratio_water_ct)/(self.params.rho_water * self.params.eta_me_pump * self.params.eta_hydr_pump)
         w_vent = 0.01 * q_cooling_orc
 
-        #Air inlet condition
-        # SetUnitSystem(SI)  #Imposto il sistema di riferimento
-        # RH_in = 0.6   #relative humidity
-        # T_ambient_C = self.params.T_ambient_C
-        # P_amb = 101325 #Pa
-        # T_wb = psy.GetTWetBulbFromRelHum(T_ambient_C, RH_in, P_amb)   #T wet bulb
-
-        T_wb = self.calculate_wet_bulb_temperature()  #Temperatura di bulbo umido dell'aria in ingresso
-        T_out_water_ct = self.params.T_in_water_ct + self.params.dT_water_ct
-        T_out_max_water_ct = T_wb + self.params.dT_max
+        # T_wb = self.calculate_wet_bulb_temperature()  #Temperatura di bulbo umido dell'aria in ingresso
+        # T_out_water_ct = self.params.T_in_water_ct + self.params.dT_water_ct
+        # T_out_max_water_ct = T_wb + self.params.dT_max
         # if T_out_max_water_ct < T_out_water_ct:
         #     raise ValueError('GenGeo::ORCCycleTboil: The maximum outlet temperature of the water ({T_out_max_water_ct}°C) is lower than the calculated outlet temperature ({T_out_water_ct}°C).')
-        dT_pp_ct = 5
-        T_out_air = T_wb + dT_pp_ct
-        q_water = mdot_ratio_water_ct * self.params.cp_water * (T_out_water_ct - self.params.T_in_water_ct)
-
-        h_fg = self.h[in_cond] - self.h[out_cond]   # Saturated vapor enthalpy - Saturated liquid enthalpy, calore latente di condensazione
-        mdot_fluido_orc = q_condenser_orc / h_fg
-        # Calcolo del calore di condensazione
-        q_condensation = mdot_fluido_orc * h_fg
-        if abs(q_condensation - q_condenser_orc) > 1e-3:  # Tolleranza per il bilancio
-            raise ValueError('GenGeo::ORCCycleTboil: Il calore di condensazione calcolato ({q_condensation} W) "f"non corrisponde al calore del condensatore ({q_condenser_orc} W).')
+        # dT_pp_ct = 5
+        # T_out_air = T_wb + dT_pp_ct
+        # q_water = mdot_ratio_water_ct * self.params.cp_water * (T_out_water_ct - self.params.T_in_water_ct)
+        #
+        # h_fg = self.h[in_cond] - self.h[out_cond]   # Saturated vapor enthalpy - Saturated liquid enthalpy, calore latente di condensazione
+        # mdot_fluido_orc = q_condenser_orc / h_fg
+        # # Calcolo del calore di condensazione
+        # q_condensation = mdot_fluido_orc * h_fg
+        # if abs(q_condensation - q_condenser_orc) > 1e-3:  # Tolleranza per il bilancio
+        #     raise ValueError('GenGeo::ORCCycleTboil: Il calore di condensazione calcolato ({q_condensation} W) "f"non corrisponde al calore del condensatore ({q_condenser_orc} W).')
 
         # water (assume pressure 100 kPa above saturation)
         P_sat_w = FluidState.getStateFromTQ(T_in_C, 0, 'Water').P_Pa  #al posto di water, self.params.working_fuid
@@ -577,7 +582,7 @@ class ORCCycleTboil(object):
         # Chiamo la funzione di plotting
         #PlotTQHX(HXs, HX_names=HX_names)
 
-        return self.results    #, self.results['w_net']
+        return self.results
 
     def calculate_w_net(self, T_boil_C, dT_sh_phe):
         # Se i risultati non sono ancora presenti, chiamare 'solve'
