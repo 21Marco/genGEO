@@ -56,7 +56,7 @@ def optimize_orc_cycle(orc_cycle, initialState):
     """
 
     # Definizione dei limiti per T_boil_C e dT_ap_phe (esempio: T_boil tra 80 e 120°C, dT_ap tra 5 e 20°C)
-    bounds = [(80, 120), (5, 25)]  # Limiti per T_boil_C e dT_ap_phe
+    bounds = [(80, 120), (5, 20)]  # Limiti per T_boil_C e dT_ap_phe
 
     # Parametri iniziali per la ricerca
     initial_guess = [100, 10]  # Esempio di valori iniziali per T_boil_C e dT_ap_phe
