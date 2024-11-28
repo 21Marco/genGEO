@@ -20,7 +20,7 @@ class ORCProblem(ElementwiseProblem):
                          n_obj=1,  # 1 obiettivo: w_net
                          n_constr=0,  # Nessun vincolo di disuguaglianza
                          xl=np.array([80, 5]),  # Limiti inferiori per T_boil_C, dT_ap_phe
-                         xu=np.array([120, 20]))  # Limiti superiori per T_boil_C, dT_ap_phe
+                         xu=np.array([120, 25]))  # Limiti superiori per T_boil_C, dT_ap_phe
 
     def _evaluate(self, x, out, *args, **kwargs):
         T_boil_C, dT_ap_phe = x
