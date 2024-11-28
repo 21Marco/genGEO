@@ -406,6 +406,9 @@ class ORCCycleTboil(object):
         self.results['w_net'] = self.results['w_turbine'] + self.results['w_pump'] + self.results['w_desuperheater'] + self.results['w_condenser'] + self.results['w_pump_cooling_tower'] + self.results['w_vent']
         print(self.results['w_net'])  # Stampa il valore di w_net
 
+        # efficiency = self.results['w_net']/(self.results['q_preheater'] + self.results['q_boiler'] + self.results['q_superheater'])
+        # print(efficiency)
+
 
         # Calculate temperatures
         results.dT_range_CT = self.T[out_rec_hot] - self.T[out_desh]
@@ -584,16 +587,17 @@ class ORCCycleTboil(object):
 
         return self.results
 
-    def calculate_w_net(self, T_boil_C, dT_sh_phe):
+    def calculate_w_net(self, T_boil_C, dT_ap_phe):
         # Se i risultati non sono ancora presenti, chiamare 'solve'
         if not hasattr(self, 'results') or 'w_net' not in self.results:
             print("La funzione 'solve' non è stata chiamata. Eseguo 'solve()' ora...")
 
             initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
-            self.solve(initialState, T_boil_C, dT_sh_phe)  # Chiamo solve con i parametri necessari
+            self.solve(initialState, T_boil_C, dT_ap_phe)  # Chiamo solve con i parametri necessari
 
         # Ora che 'self.results' è presente, restituisci w_net
-        return self.results['w_net']
+        return self.results['w_net']  # Corretto da 'Results' a 'results'
+
 
 
 

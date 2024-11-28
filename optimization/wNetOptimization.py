@@ -1,70 +1,65 @@
 import numpy as np
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from pymoo.algorithms.soo.nonconvex.pattern import PatternSearch
 from pymoo.optimize import minimize
-from pymoo.core.problem import Problem
+from pymoo.core.problem import ElementwiseProblem
 from src.oRCCycleTboil import ORCCycleTboil
 from models.simulationParameters import SimulationParameters
+from utils.fluidState import FluidState
 
-# Inizializzo i parametri con il fluido desiderato e creo il ciclo ORC passando i parametri configurati
-params = SimulationParameters(orc_fluid='R245fa')
-cycle = ORCCycleTboil(params=params)
-
-# Definisco il problema di ottimizzazione
-class ORCOptimizationProblem(Problem):   # è il mio problema di ottimizzazione
-    def __init__(self, cycle):
-        self.cycle = cycle  # Passo un'istanza di ORCCycleTboil
-        super().__init__(
-            n_var=2,  # Numero di variabili (T_boil_C e dT_sh_phe)
-            n_obj=1,  # Numero di obiettivi
-            n_constr=0,  # Numero di vincoli
-            xl=np.array([80, 5]),  # Limiti inferiori delle variabili
-            xu=np.array([120, 20])  # Limiti superiori delle variabili
-        )
+# Definizione del problema di ottimizzazione ORC mono-obiettivo
+class ORCProblem(ElementwiseProblem):
+    def __init__(self, orc_cycle, initialState):
+        self.orc_cycle = orc_cycle
+        self.initialState = initialState
+        super().__init__(n_var=2,  # 2 variabili: T_boil_C, dT_ap_phe
+                         n_obj=1,  # 1 obiettivo: w_net
+                         n_constr=0,  # Nessun vincolo di disuguaglianza
+                         xl=np.array([80, 5]),  # Limiti inferiori per T_boil_C, dT_ap_phe
+                         xu=np.array([120, 20]))  # Limiti superiori per T_boil_C, dT_ap_phe
 
     def _evaluate(self, x, out, *args, **kwargs):
-        T_boil_C = x[:, 0]  # Prima variabile: temperatura di evaporazione
-        dT_sh_phe = x[:, 1]  # Seconda variabile: delta T di surriscaldamento
-        print(dT_sh_phe)
-        print(T_boil_C)
+        T_boil_C, dT_ap_phe = x
 
-        # Calcolo la potenza netta usando il metodo del ciclo ORC
-        w_net = np.array([self.cycle.calculate_w_net(t, dt) for t, dt in zip(T_boil_C, dT_sh_phe)])
+        # Aggiorna il parametro dT_ap_phe dentro orc_cycle
+        self.orc_cycle.params.dT_ap_phe = dT_ap_phe
 
-        # Minimizzare il negativo della potenza netta
-        out["F"] = -w_net
+        # Risolvi il ciclo ORC con i parametri forniti
+        results = self.orc_cycle.solve(initialState=self.initialState, T_boil_C=T_boil_C)
 
-# Istanziare il problema con il ciclo configurato
-problem = ORCOptimizationProblem(cycle=cycle)
+        # Potenza netta (w_net) come obiettivo
+        w_net = results['w_net']
 
-# Configurare l'algoritmo PatternSearch
+        # Restituisci l'obiettivo (potenza netta, massimizzata moltiplicando per -1 per minimizzare)
+        out["F"] = -w_net  # Minimizzare il negativo per massimizzare w_net
+
+# Creazione dell'oggetto ORCCycleTboil
+params = SimulationParameters(orc_fluid='R245fa')
+orc_cycle = ORCCycleTboil(params=params)
+initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
+
+# Creazione del problema
+problem = ORCProblem(orc_cycle, initialState)
+
+# Definire l'algoritmo Pattern Search per mono-obiettivo
 algorithm = PatternSearch()
 
-# Risolvere il problema
+# Esegui l'ottimizzazione con Pattern Search
 res = minimize(problem,
                algorithm,
-               verbose=True,
-               seed=1)
+               verbose=False,
+               seed=1,
+               x0=np.array([100, 10]))  # Imposta un punto iniziale esplicito per T_boil_C e dT_ap_phe, altrimenti prende un valore casuale tra i limiti imposti
 
-# Stampare i risultati
-print("Migliore soluzione trovata:")
-print("Temperatura di evaporazione (T_boil_C):", res.X[0], "°C")
-print("Delta T di surriscaldamento (dT_sh_phe):", res.X[1], "°C")
-print("Massima potenza netta:", -res.F[0])
-
-
-
-
-
-
-
-
-
-
-
+# Stampa dei risultati
+print("Best solution found: ")
+print("T_boil_C: ", res.X[0], "°C")
+print("dT_ap_phe: ", res.X[1], "°C")
+print("Potenza netta:", -res.F, "W")  # Restituiamo la potenza netta positiva
 
 
 

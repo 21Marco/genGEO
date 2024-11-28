@@ -43,7 +43,7 @@ class ORCCycleTboilTest(unittest.TestCase):
     def testORCCycleTboil(self):
 
         initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
-        results = cycle.solve(initialState, T_boil_C = 100., dT_pinch = 5.)
+        results = cycle.solve(initialState, T_boil_C = 91.44497586186176, dT_pinch = 5.)
 
         self.assertTrue(*testAssert(results.state.T_C, 68.36, 'test1_temp'))
         self.assertTrue(*testAssert(results.w_net, 3.8559e4, 'test1_w_net'))

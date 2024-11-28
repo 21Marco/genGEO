@@ -58,7 +58,7 @@ class SimulationParameters(object):
                 dT_approach = 7.,  #differenza T acqua raffreddata uscita torre e aria ambiente
                 dT_pinch = 5.,
                 dT_pp_rec = 5.,  # pinch al recuperatore
-                dT_ap_phe = 10.,  # Approach al PHE
+                dT_ap_phe = 20.,  # Approach al PHE
                 dT_sh_phe = 0.,  #superheater al PHE
                 dT_sc_phe = 2.,   #sub_cooling al PHE
                 eta_pump_orc = 0.75,   #isoentropic
