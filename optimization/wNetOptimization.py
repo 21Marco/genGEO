@@ -11,7 +11,7 @@ from src.oRCCycleTboil import ORCCycleTboil
 from models.simulationParameters import SimulationParameters
 from utils.fluidState import FluidState
 
-# Definizione del problema di ottimizzazione ORC mono-obiettivo
+# Definizione del problema di ottimizzazione
 class ORCProblem(ElementwiseProblem):
     def __init__(self, orc_cycle, initialState):
         self.orc_cycle = orc_cycle
@@ -28,13 +28,11 @@ class ORCProblem(ElementwiseProblem):
         # Aggiorna il parametro dT_ap_phe dentro orc_cycle
         self.orc_cycle.params.dT_ap_phe = dT_ap_phe
 
-        # Risolvi il ciclo ORC con i parametri forniti
+        # Risolvo il ciclo ORC con i parametri forniti
         results = self.orc_cycle.solve(initialState=self.initialState, T_boil_C=T_boil_C)
 
-        # Potenza netta (w_net) come obiettivo
         w_net = results['w_net']
 
-        # Restituisci l'obiettivo (potenza netta, massimizzata moltiplicando per -1 per minimizzare)
         out["F"] = -w_net  # Minimizzare il negativo per massimizzare w_net
 
 # Creazione dell'oggetto ORCCycleTboil
@@ -45,15 +43,15 @@ initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
 # Creazione del problema
 problem = ORCProblem(orc_cycle, initialState)
 
-# Definire l'algoritmo Pattern Search per mono-obiettivo
+# Definire l'algoritmo Pattern Search
 algorithm = PatternSearch()
 
-# Esegui l'ottimizzazione con Pattern Search
+# Ottimizzazione con Pattern Search
 res = minimize(problem,
                algorithm,
                verbose=False,
                seed=1,
-               x0=np.array([100, 10]))  # Imposta un punto iniziale esplicito per T_boil_C e dT_ap_phe, altrimenti prende un valore casuale tra i limiti imposti
+               x0=np.array([100, 10]))  # Imposto un punto iniziale esplicito per T_boil_C e dT_ap_phe, altrimenti prende un valore casuale tra i limiti imposti
 
 # Stampa dei risultati
 print("Best solution found: ")

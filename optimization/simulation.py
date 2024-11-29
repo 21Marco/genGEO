@@ -21,8 +21,8 @@ cycle = ORCCycleTboil(params = params)
 
 def simulation(initialState, params):
     # Intervalli di T_boil_C e dT_ap_phe
-    T_boil_values = np.arange(100, 121, 5)  # Valori da 100 a 120 (incluso), con step di 5
-    dT_approach_values = np.arange(5, 21, 5)  # Valori da 5 a 20 (incluso), con step di 5
+    T_boil_values = np.arange(80, 121, 5)  # Valori con step di 5
+    dT_approach_values = np.arange(5, 21, 5)
 
     # Dizionario per salvare i risultati
     results_dict = {}
@@ -31,7 +31,7 @@ def simulation(initialState, params):
     for T_boil_C in T_boil_values:
         for dT_ap_phe in dT_approach_values:
 
-            # Aggiorno il parametro dT_ap_phe nel ciclo, perchè in solve ho self.params.dT_ap_phe e qui l'ho chiamatpo semplicemente dT_ap_phe
+            # Aggiorno il parametro dT_ap_phe nel ciclo, perchè in solve ho self.params.dT_ap_phe e qui l'ho chiamato semplicemente dT_ap_phe
             params.dT_ap_phe = dT_ap_phe
 
             # Simulazione per questi valori specifici di T_boil_C e dT_ap_phe

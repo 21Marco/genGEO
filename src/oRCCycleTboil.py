@@ -587,16 +587,16 @@ class ORCCycleTboil(object):
 
         return self.results
 
-    def calculate_w_net(self, T_boil_C, dT_ap_phe):
-        # Se i risultati non sono ancora presenti, chiamare 'solve'
-        if not hasattr(self, 'results') or 'w_net' not in self.results:
-            print("La funzione 'solve' non è stata chiamata. Eseguo 'solve()' ora...")
-
-            initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
-            self.solve(initialState, T_boil_C, dT_ap_phe)  # Chiamo solve con i parametri necessari
-
-        # Ora che 'self.results' è presente, restituisci w_net
-        return self.results['w_net']  # Corretto da 'Results' a 'results'
+    # def calculate_w_net(self, T_boil_C, dT_ap_phe):
+    #     # Se i risultati non sono ancora presenti, chiamare 'solve'
+    #     if not hasattr(self, 'results') or 'w_net' not in self.results:
+    #         print("La funzione 'solve' non è stata chiamata. Eseguo 'solve()' ora...")
+    #
+    #         initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
+    #         self.solve(initialState, T_boil_C, dT_ap_phe)  # Chiamo solve con i parametri necessari
+    #
+    #     # Ora che 'self.results' è presente, restituisci w_net
+    #     return self.results['w_net']  # Corretto da 'Results' a 'results'
 
 
 
