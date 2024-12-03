@@ -61,7 +61,6 @@ class ORCCycleTboil(object):
         return T_wb
 
     def solve(self, initialState, T_boil_C = False, dT_pinch = False, dT_ap_phe = False):
-        #print(f"DEBUG: Entrato in solve con T_boil_C={T_boil_C}, dT_ap_phe={dT_ap_phe}")
 
         T_in_C = initialState.T_C
 
@@ -98,7 +97,7 @@ class ORCCycleTboil(object):
         if T_boil_C > self.T_boil_max:
             raise Exception('GenGeo::ORCCycleTboil:Tboil_Too_Large - Boiling temperature of %s is greater than maximum allowed of %s.'%(T_boil_C, self.T_boil_max))
 
-        #Initialization of condense temperature
+        #Initialization of condensation temperature
         if self.params.use_wet_bulb:
             T_wb = self.calculate_wet_bulb_temperature()  # Temperatura di bulbo umido dell'aria in ingresso
             T_in_water_ct = T_wb + self.params.dT_ct
@@ -145,7 +144,7 @@ class ORCCycleTboil(object):
         if self.params.dp_dT_loss['loss_eva'] > 0:
             self.p[out_eco_subcool] = self.state[out_eco_subcool].P_Pa / (1 - self.params.dp_dT_loss['loss_eva'])  # dp for the boiler
         else:
-            self.T[out_eco_subcool] = self.state[out_eva].T_C + self.params.dp_dT_loss['loss_eva']  # - dT_sc
+            self.T[out_eco_subcool] = self.state[out_eva].T_C + self.params.dp_dT_loss['loss_eva']
             self.p[out_eco_subcool] = FluidState.getStateFromTQ(self.T[out_eco_subcool], 0, self.params.orc_fluid).P_Pa
 
         #Preheater/Economizer
@@ -586,17 +585,6 @@ class ORCCycleTboil(object):
         #PlotTQHX(HXs, HX_names=HX_names)
 
         return self.results
-
-    # def calculate_w_net(self, T_boil_C, dT_ap_phe):
-    #     # Se i risultati non sono ancora presenti, chiamare 'solve'
-    #     if not hasattr(self, 'results') or 'w_net' not in self.results:
-    #         print("La funzione 'solve' non è stata chiamata. Eseguo 'solve()' ora...")
-    #
-    #         initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
-    #         self.solve(initialState, T_boil_C, dT_ap_phe)  # Chiamo solve con i parametri necessari
-    #
-    #     # Ora che 'self.results' è presente, restituisci w_net
-    #     return self.results['w_net']  # Corretto da 'Results' a 'results'
 
 
 

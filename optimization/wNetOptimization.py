@@ -19,8 +19,8 @@ class ORCProblem(ElementwiseProblem):
         super().__init__(n_var=2,  # 2 variabili: T_boil_C, dT_ap_phe
                          n_obj=1,  # 1 obiettivo: w_net
                          n_constr=0,  # Nessun vincolo di disuguaglianza
-                         xl=np.array([80, 5]),  # Limiti inferiori per T_boil_C, dT_ap_phe
-                         xu=np.array([120, 20]))  # Limiti superiori per T_boil_C, dT_ap_phe
+                         xl=np.array([70, 5]),  # Limiti inferiori per T_boil_C, dT_ap_phe
+                         xu=np.array([120, 30]))  # Limiti superiori per T_boil_C, dT_ap_phe
 
     def _evaluate(self, x, out, *args, **kwargs):
         T_boil_C, dT_ap_phe = x
@@ -57,7 +57,7 @@ res = minimize(problem,
 print("Best solution found: ")
 print("T_boil_C: ", res.X[0], "°C")
 print("dT_ap_phe: ", res.X[1], "°C")
-print("Potenza netta:", -res.F, "W")  # Restituiamo la potenza netta positiva
+print("Net Power:", -res.F, "W")  # Restituiamo la potenza netta positiva
 
 
 

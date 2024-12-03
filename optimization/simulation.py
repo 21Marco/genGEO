@@ -48,13 +48,13 @@ def simulation(initialState, params):
     output_csv_file = os.path.join(results_folder, 'orc_cycle_results.csv')
 
     # Salvataggio in un file CSV (sovrascrive ogni volta)
-    with open(output_csv_file, mode='w', newline='') as file:
-        writer = csv.writer(file)
+    with open(output_csv_file, mode='w', newline='') as file:  # newline='' serve per evitare che vengano aggiunte righe vuote tra le righe scritte
+        writer = csv.writer(file)   #creo un oggetto (writer) per scrivere i dati
         writer.writerow(['T_boil_C', 'dT_ap_phe', 'w_net'])  # Intestazione
-        for (T_boil_C, dT_ap_phe), w_net in results_dict.items():
+        for (T_boil_C, dT_ap_phe), w_net in results_dict.items():  # Viene riempito il file
             writer.writerow([T_boil_C, dT_ap_phe, w_net])
 
-    print(f"File CSV salvato in: {output_csv_file}")
+    print(f"File CSV saved in: {output_csv_file}")
 
     # Salvataggio in formato JSON (sovrascrive ogni volta)
     output_json_file = os.path.join(results_folder, 'orc_cycle_results.json')
@@ -62,14 +62,14 @@ def simulation(initialState, params):
     # Crea una lista di dizionari (convertendo i valori a tipi nativi di Python)
     json_results = [
         {"T_boil_C": float(T_boil_C), "dT_ap_phe": float(dT_ap_phe), "w_net": float(w_net)}  # Converti a float o int se necessario
-        for (T_boil_C, dT_ap_phe), w_net in results_dict.items()
+        for (T_boil_C, dT_ap_phe), w_net in results_dict.items()        # Per ogni coppia di dati, mi da la potenza
     ]
 
     # Scrivi i dati in formato JSON
     with open(output_json_file, 'w') as json_file:
         json.dump(json_results, json_file, indent=4)
 
-    print(f"File JSON salvato in: {output_json_file}")
+    print(f"File JSON saved in: {output_json_file}")
 
 # Esegui la simulazione
 simulation(initialState, params)

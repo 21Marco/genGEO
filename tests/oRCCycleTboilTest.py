@@ -14,6 +14,7 @@
 
 ############################
 import unittest
+import json
 
 from src.oRCCycleTboil import ORCCycleTboil
 from src.coolingCondensingTower import CoolingCondensingTower
@@ -43,7 +44,7 @@ class ORCCycleTboilTest(unittest.TestCase):
     def testORCCycleTboil(self):
 
         initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
-        results = cycle.solve(initialState, T_boil_C = 91.44497586186176, dT_pinch = 5.)
+        results = cycle.solve(initialState, T_boil_C = 100., dT_pinch = 5.)
 
         self.assertTrue(*testAssert(results.state.T_C, 68.36, 'test1_temp'))
         self.assertTrue(*testAssert(results.w_net, 3.8559e4, 'test1_w_net'))
@@ -58,3 +59,20 @@ class ORCCycleTboilTest(unittest.TestCase):
             results = cycle.solve(initialState, T_boil_C = 100., dT_pinch = 5.)
         except Exception as ex:
             self.assertTrue(str(ex).find('GenGeo::ORCCycleTboil:Tboil_Too_Large') > -1, 'test1_fail_not_found')
+
+    def testConsistencyWithSimulation(self):   #per eseguirlo correttamente però in simulation devo mettere params.dT_pinch = dT_ap_phe al posto di params.dT_ap_phe = dT_ap_phe, perchè sebbene entrambi rappresentino differenze di temperatura in alcune parti del ciclo ORC, sono parametri distinti che potrebbero influenzare i risultati in modo diverso
+        initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
+
+        # Calcola con la funzione solve
+        test_results = cycle.solve(initialState, T_boil_C = 100., dT_ap_phe = 20.)
+
+        # Leggi i risultati da simulation (ad esempio da JSON)
+        with open(r"C:\Users\marco\OneDrive - Politecnico di Milano\Documenti\Poli\Geothermal Reservoir + ORC\genGEO\results\orc_cycle_results.json", 'r') as json_file:
+            saved_results = json.load(json_file)
+
+        # Trova il risultato corrispondente
+        matching_result = next((r for r in saved_results if r["T_boil_C"] == 100.0 and r["dT_ap_phe"] == 20.0), None)
+
+        self.assertIsNotNone(matching_result, "No matching result found in saved simulation data")
+        self.assertAlmostEqual(test_results['w_net'], matching_result['w_net'], places=5)
+

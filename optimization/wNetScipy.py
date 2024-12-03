@@ -54,7 +54,7 @@ def optimize_orc_cycle(orc_cycle, initialState):
     - Risultati ottimizzati (T_boil_C, dT_ap_phe)
     """
 
-    bounds = [(80, 120), (5, 20)]  # Limiti per T_boil_C e dT_ap_phe
+    bounds = [(70, 120), (5, 20)]  # Limiti per T_boil_C e dT_ap_phe
 
     initial_guess = [100, 10]  # Valori iniziali per T_boil_C e dT_ap_phe
 
@@ -66,12 +66,12 @@ def optimize_orc_cycle(orc_cycle, initialState):
         optimal_params = result.x
         # Calcolo la potenza netta ottimizzata usando i parametri ottimizzati
         optimal_power = -result.fun
-        print(f"Risultati ottimizzati:")
+        print(f"Best solution found:")
         print(f"T_boil_C : {optimal_params[0]} °C")
         print(f"dT_ap_phe : {optimal_params[1]} °C")
-        print(f"Potenza netta ottimizzata : {optimal_power:.2f} W")
+        print(f"Net Power : {optimal_power:.2f} W")
     else:
-        print("Ottimizzazione fallita.")
+        print("Optimization failed")
         return None
 
 

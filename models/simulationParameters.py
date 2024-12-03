@@ -71,18 +71,16 @@ class SimulationParameters(object):
                 dT_pp_cond = 5.,
                 dp_water_condenser = 0.,
                 # cooling tower
-                dT_water_ct = 7.,  # DT water in the cooling tower
                 dT_ct = 5.,
-                dT_pp1_ct = 1.,
-                cp_water = 4186,  # J/kgK
-                dP_ct = 200000, #Pa
+                dT_water_ct = 7.,  # DT water in the cooling tower
+                dT_pp1_ct = 1.,    # T_out_water_ct - T_cond
+                cp_water = 4186,   # J/kgK
+                dP_ct = 200000,    # Pa
                 eta_me_pump = 0.94,  #electrical mechanical efficiency
                 eta_hydr_pump = 0.75,  #hydraulic efficiency
-                #eta_is_pump = 0.8,    #isoentropic efficiency
                 rho_water = 1000,   #kg/m3
-                eta_ct = 0.85,     #efficiency cooling tower
                 RH_in = 0.6,    #relative humidity
-                T_in_water_ct = 10.,
+                #T_in_water_ct = 10.,
                 dT_max = 10.,
                 # cost model
                 cost_year = 2019,
@@ -150,9 +148,8 @@ class SimulationParameters(object):
         self.eta_me_pump = eta_me_pump
         self.eta_hydr_pump = eta_hydr_pump
         self.rho_water = rho_water
-        self.eta_ct = eta_ct
         self.RH_in = RH_in
-        self.T_in_water_ct = T_in_water_ct
+        #self.T_in_water_ct = T_in_water_ct
         self.dT_max = dT_max
         self.cost_year = cost_year
         self.success_rate = success_rate
