@@ -42,7 +42,11 @@ class ORCCycleTboil(object):
         self.data = getTboilOptimum()
         self.orc_fluid = self.params.orc_fluid
         self.T_boil_max = maxSubcritORCBoilTemp(self.orc_fluid)
+        self.T = {}
         self.results = {}  # Inizializzazione dell'attributo results come dizionario
+
+        self.out_cond, self.out_pump, self.out_rec_cold, self.out_eco_preheat, self.out_eco_subcool, self.out_eva, self.out_sh, self.out_turb, self.out_rec_hot, self.out_desh = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        self.in_pump, self.in_rec_cold, self.in_eco, self.in_eva_preheat, self.in_eva_subcool, self.in_sh, self.in_turb, self.in_rec_hot, self.in_desh, self.in_cond = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     def update_properties(self, index):
         """Aggiorna temperatura, pressione ed entalpia in base allo stato definito."""
@@ -60,7 +64,23 @@ class ORCCycleTboil(object):
         T_wb = psy.GetTWetBulbFromRelHum(self.params.T_ambient_C, self.params.RH_in, 101325)
         return T_wb
 
-    def solve(self, initialState, T_boil_C = False, dT_pinch = False, dT_ap_phe = False):
+    def get_temperatures(self):
+        """ Restituisce un dizionario con le temperature per ciascun stato del ciclo """
+        temperatures = {
+            'T_in_pump': self.T[self.in_pump],
+            'T_in_rec_cold': self.T[self.in_rec_cold],
+            'T_in_eco': self.T[self.in_eco],
+            'T_in_eva_preheat': self.T[self.in_eva_preheat],
+            'T_in_eva_subcool': self.T[self.in_eva_subcool],
+            'T_in_sh': self.T[self.in_sh],
+            'T_in_turb': self.T[self.in_turb],
+            'T_in_rec_hot': self.T[self.in_rec_hot],
+            'T_in_desh': self.T[self.in_desh],
+            'T_in_cond': self.T[self.in_cond]
+        }
+        return temperatures
+
+    def solve(self, initialState, T_boil_C = False, dT_pinch = False):
 
         T_in_C = initialState.T_C
 
@@ -118,8 +138,8 @@ class ORCCycleTboil(object):
 
         #State 1 (Condenser -> Pump)
         #saturated liquid
-        self.state[out_cond] = FluidState.getStateFromTQ(T_condense_C, 0, self.params.orc_fluid)
-        self.update_properties(out_cond)
+        self.state[self.out_cond] = FluidState.getStateFromTQ(T_condense_C, 0, self.params.orc_fluid)
+        self.update_properties(self.out_cond)
 
         #State 6 (Boiler -> Superheater)
         #saturated vapor
@@ -584,8 +604,17 @@ class ORCCycleTboil(object):
         # Chiamo la funzione di plotting
         #PlotTQHX(HXs, HX_names=HX_names)
 
-        return self.results
+        # Esegui aggiornamenti per ogni stato del ciclo
+        for i in range(10):
+            self.update_properties(i)
 
+        # Calcola le temperature per ciascun stato del ciclo
+        temperatures = self.get_temperatures()
+
+        # Aggiungi le temperature ai risultati
+        self.results['temperatures'] = temperatures
+
+        return self.results
 
 
 
