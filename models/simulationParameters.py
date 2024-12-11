@@ -35,15 +35,15 @@ class SimulationParameters(object):
                 silica_precipitation = False,
                 T_surface_rock = 15,
                 T_ambient_C = 15.,
-                use_wet_bulb = True,  #se True uso questo metodo
+                use_wet_bulb = False,  #se True uso questo metodo
                 reservoir_thickness = 100.,
                 permeability = 1.0e-15 * 15000 / 100., # permeability = transmissivity / thickness
                 wellFieldType = WellFieldType._5Spot_SharedNeighbor,
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
-                orc_Saturated = False,  # se True, ciclo saturo
-                orc_no_Rec = False,     # se True, no recuperatore
+                orc_Saturated = True,  # se True, ciclo saturo
+                orc_no_Rec = True,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
                 dp_dT_loss = {      #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
@@ -56,13 +56,13 @@ class SimulationParameters(object):
                      'loss_cond': 0
                 },
                 dT_approach = 7.,  #differenza T acqua raffreddata uscita torre e aria ambiente
-                dT_pinch = 5.,
+                dT_pinch = 5.,     # Pinch al PHE
                 dT_pp_rec = 5.,  # pinch al recuperatore
                 dT_ap_phe = 20.,  # Approach al PHE
-                dT_sh_phe = 0.,  #superheater al PHE
-                dT_sc_phe = 2.,   #sub_cooling al PHE
-                eta_pump_orc = 0.75,   #isoentropic
-                eta_turbine_orc = 0.8,   #isoentropic
+                dT_sh_phe = 10.,  # superheater al PHE
+                dT_sc_phe = 2.,   # sub_cooling al PHE
+                eta_pump_orc = 0.75,   # isoentropic
+                eta_turbine_orc = 0.8,   # isoentropic
                 eta_pump_co2 = 0.9,
                 eta_turbine_co2 = 0.78,
                 cooling_mode = CoolingCondensingTowerMode.Wet,
