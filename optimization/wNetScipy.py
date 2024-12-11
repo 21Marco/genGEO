@@ -69,7 +69,7 @@ def optimize_orc_cycle(orc_cycle, initialState):
         print(f"Best solution found:")
         print(f"T_boil_C : {optimal_params[0]} °C")
         print(f"dT_ap_phe : {optimal_params[1]} °C")
-        print(f"Net Power : {optimal_power:.2f} W")
+        print(f"Net Power : {optimal_power:} W")
     else:
         print("Optimization failed")
         return None
