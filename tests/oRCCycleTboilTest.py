@@ -60,7 +60,7 @@ class ORCCycleTboilTest(unittest.TestCase):
         except Exception as ex:
             self.assertTrue(str(ex).find('GenGeo::ORCCycleTboil:Tboil_Too_Large') > -1, 'test1_fail_not_found')
 
-    def testConsistencyWithSimulation(self):   #per eseguirlo correttamente però in simulation devo mettere params.dT_pinch = dT_ap_phe al posto di params.dT_ap_phe = dT_ap_phe, perchè sebbene entrambi rappresentino differenze di temperatura in alcune parti del ciclo ORC, sono parametri distinti che potrebbero influenzare i risultati in modo diverso
+    def testSimulation(self):   #per eseguirlo correttamente però in simulation devo mettere params.dT_pinch = dT_ap_phe al posto di params.dT_ap_phe = dT_ap_phe, perchè sebbene entrambi rappresentino differenze di temperatura in alcune parti del ciclo ORC, sono parametri distinti che potrebbero influenzare i risultati in modo diverso
         initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
 
         # Calcola con la funzione solve
@@ -74,5 +74,16 @@ class ORCCycleTboilTest(unittest.TestCase):
         matching_result = next((r for r in saved_results if r["T_boil_C"] == 100.0 and r["dT_ap_phe"] == 20.0), None)
 
         self.assertIsNotNone(matching_result, "No matching result found in saved simulation data")
-        self.assertAlmostEqual(test_results['w_net'], matching_result['w_net'], places=5)
+        self.assertAlmostEqual(test_results['w_net'], matching_result['w_net'], places = 5)
+
+    def testORCCycleTboil_new(self):
+
+        initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
+        results = cycle.solve(initialState, dT_ap_phe = 36.40368051566951, dT_sh_phe = 19.978267444722356 )
+
+        self.assertTrue(*testAssert(results.state.T_C, 68.36, 'test1_temp'))
+        self.assertTrue(*testAssert(results.w_net, 3.8559e4, 'test1_w_net'))
+        self.assertTrue(*testAssert(results.w_turbine, 4.7773e4, 'test1_w_turbine'))
+        self.assertTrue(*testAssert(results.q_preheater, 1.5778e5, 'test1_q_preheater'))
+        self.assertTrue(*testAssert(results.q_boiler, 1.9380e5, 'test1_q_boiler'))
 
