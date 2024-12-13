@@ -19,9 +19,9 @@ import matplotlib as plt
 import psychrolib as psy
 
 from src.coolingCondensingTower import CoolingCondensingTower
+from src.condenser import CondenserType, Condenser
 from src.powerPlantOutput import PowerPlantOutput
-from src.plotDiagrams import TsDischarge
-from src.plotDiagrams import PlotTQHX
+from src.plotDiagrams import TsDischarge, PlotTQHX
 from psychrolib import SetUnitSystem, SI
 
 from utils.constantsAndPaths import getTboilOptimum
@@ -45,9 +45,6 @@ class ORCCycleTboil(object):
         self.T = {}
         self.results = {}  # Inizializzazione di results come dizionario
 
-        self.out_cond, self.out_pump, self.out_rec_cold, self.out_eco_preheat, self.out_eco_subcool, self.out_eva, self.out_sh, self.out_turb, self.out_rec_hot, self.out_desh = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        self.in_pump, self.in_rec_cold, self.in_eco, self.in_eva_preheat, self.in_eva_subcool, self.in_sh, self.in_turb, self.in_rec_hot, self.in_desh, self.in_cond = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
     def update_properties(self, index):
         """Aggiorna temperatura, pressione ed entalpia in base allo stato definito."""
         if self.state[index] is not None:
@@ -63,22 +60,6 @@ class ORCCycleTboil(object):
         SetUnitSystem(SI)  # Sistema internazionale
         T_wb = psy.GetTWetBulbFromRelHum(self.params.T_ambient_C, self.params.RH_in, 101325)
         return T_wb
-
-    # def get_temperatures(self):
-    #     """ Restituisce un dizionario con le temperature per ciascun stato del ciclo """
-    #     temperatures = {
-    #         'T_in_pump': self.T[self.in_pump],
-    #         'T_in_rec_cold': self.T[self.in_rec_cold],
-    #         'T_in_eco': self.T[self.in_eco],
-    #         'T_in_eva_preheat': self.T[self.in_eva_preheat],
-    #         'T_in_eva_subcool': self.T[self.in_eva_subcool],
-    #         'T_in_sh': self.T[self.in_sh],
-    #         'T_in_turb': self.T[self.in_turb],
-    #         'T_in_rec_hot': self.T[self.in_rec_hot],
-    #         'T_in_desh': self.T[self.in_desh],
-    #         'T_in_cond': self.T[self.in_cond]
-    #     }
-    #     return temperatures
 
     def solve(self, initialState, dT_ap_phe = False, dT_sh_phe = False):
 
@@ -112,21 +93,23 @@ class ORCCycleTboil(object):
         if T_boil_C > FluidState.getTcrit(self.params.orc_fluid):
             raise Exception('GenGeo::ORCCycleTboil:Tboil_Too_Large - Boiling temperature above critical point')
 
-        # only refresh T_boil_max if orc_fluid has changed from initial
-        if self.params.orc_fluid != self.orc_fluid:
-            self.T_boil_max = maxSubcritORCBoilTemp(self.params.orc_fluid)
-            self.orc_fluid = self.params.orc_fluid
-        if T_boil_C > self.T_boil_max:
-            raise Exception('GenGeo::ORCCycleTboil:Tboil_Too_Large - Boiling temperature of %s is greater than maximum allowed of %s.'%(T_boil_C, self.T_boil_max))
+        # # only refresh T_boil_max if orc_fluid has changed from initial
+        # if self.params.orc_fluid != self.orc_fluid:
+        #     self.T_boil_max = maxSubcritORCBoilTemp(self.params.orc_fluid)
+        #     self.orc_fluid = self.params.orc_fluid
+        # if T_boil_C > self.T_boil_max:
+        #     raise Exception('GenGeo::ORCCycleTboil:Tboil_Too_Large - Boiling temperature of %s is greater than maximum allowed of %s.'%(T_boil_C, self.T_boil_max))
 
-        #Initialization of condensation temperature
-        if self.params.use_wet_bulb:
+        #Condenser Type and initialization of condensation temperature
+        if self.params.condenser_type == CondenserType.WATER:
+            T_condense_C = self.params.T_ambient_C + self.params.dT_approach
+        elif self.params.condenser_type == CondenserType.AIR:
+            T_condense_C = self.params.T_ambient_C + self.params.dT_approach   # cambiare in self.params.dT_air_approach
+        elif self.params.condenser_type == CondenserType.EVAPORATIVE_TOWER:
             T_wb = self.calculate_wet_bulb_temperature()  # Temperatura di bulbo umido dell'aria in ingresso
             T_in_water_ct = T_wb + self.params.dT_ct
             T_out_water_ct = T_in_water_ct + self.params.dT_water_ct
             T_condense_C = T_out_water_ct + self.params.dT_pp1_ct
-        else:
-            T_condense_C = self.params.T_ambient_C + self.params.dT_approach
 
         #Creation of a list for the 10 tdn points
         self.state = [None] * 10
@@ -335,39 +318,28 @@ class ORCCycleTboil(object):
         results = PowerPlantOutput()
 
         #Calculate orc heat/work
-        w_pump_orc = self.state[out_cond].h_Jkg - self.state[out_pump].h_Jkg
-        q_recuperator_orc = -1 * (self.state[out_pump].h_Jkg - self.state[out_rec_cold].h_Jkg)
-        q_preheater_orc = -1 * (self.state[out_rec_cold].h_Jkg - self.state[out_eco_preheat].h_Jkg)
-        q_boiler_orc = -1 * (self.state[out_eco_preheat].h_Jkg - self.state[out_eva].h_Jkg)
-        q_superheater_orc = -1 * (self.state[out_eva].h_Jkg - self.state[out_sh].h_Jkg)
-        w_turbine_orc = self.state[out_sh].h_Jkg - self.state[out_turb].h_Jkg
-        q_desuperheater_orc = -1 * (self.state[out_rec_hot].h_Jkg - self.state[out_desh].h_Jkg)
-        q_condenser_orc = -1 * (self.state[out_desh].h_Jkg - self.state[out_cond].h_Jkg)
+        w_pump_orc = self.h[out_cond] - self.h[out_pump]
+        q_recuperator_orc = -1 * (self.h[out_pump] - self.h[out_rec_cold])
+        q_preheater_orc = -1 * (self.h[out_rec_cold] - self.h[out_eco_preheat])
+        q_boiler_orc = -1 * (self.h[out_eco_preheat] - self.h[out_eva])
+        q_superheater_orc = -1 * (self.h[out_eva] - self.h[out_sh])
+        w_turbine_orc = self.h[out_sh] - self.h[out_turb]
+        q_desuperheater_orc = -1 * (self.h[out_rec_hot] - self.h[out_desh])
+        q_condenser_orc = -1 * (self.h[out_desh] - self.h[out_cond])
 
-        results.dP_pump_orc = self.state[out_pump].P_Pa - self.state[out_cond].P_Pa
-        results.P_boil = self.state[out_eco_subcool].P_Pa
-
-        # Cooling Tower Parasitic load
-        dT_range = self.T[out_rec_hot] - self.T[out_desh]
-        parasiticPowerFraction = CoolingCondensingTower.parasiticPowerFraction(self.params.T_ambient_C, self.params.dT_approach, dT_range, self.params.cooling_mode)
-        w_desuperheater_orc = q_desuperheater_orc * parasiticPowerFraction('cooling')
-        w_condenser_orc = q_condenser_orc * parasiticPowerFraction('condensing')
-
-        q_cooling_orc = -(q_condenser_orc + q_desuperheater_orc)
-        mdot_ratio_water_ct = q_cooling_orc/(self.params.cp_water * self.params.dT_water_ct)
-        w_pump_cooling_tower = -(self.params.dP_ct * mdot_ratio_water_ct)/(self.params.rho_water * self.params.eta_me_pump * self.params.eta_hydr_pump)
-        w_vent = 0.01 * q_cooling_orc
+        results.dP_pump_orc = self.p[out_pump] - self.p[out_cond]
+        results.P_boil = self.p[out_eco_subcool]
 
         # water (assume pressure 100 kPa above saturation)
-        P_sat_w = FluidState.getStateFromTQ(T_in_C, 0, 'Water').P_Pa  #al posto di water, self.params.working_fuid
+        P_sat_w = FluidState.getStateFromTQ(T_in_C, 0, 'Water').P_Pa  # al posto di water, self.params.working_fuid
         cp = FluidState.getStateFromPT(P_sat_w + 100e3, T_in_C, 'Water').cp_JK  # al posto di P_sat + 100e3 mettere la P_out_well_geothermal_fluid, initialState.P_Pa
         # Water state a, inlet, b, mid, c, mid, d, exit
         T_a = T_in_C
         T_c = self.T[out_eco_subcool] + self.params.dT_pinch
         # mdot_ratio = mdot_orc / mdot_water
         mdot_ratio = cp * (T_a - T_c) / (q_boiler_orc + q_superheater_orc)
-        T_d = T_c - mdot_ratio * q_preheater_orc / cp  #injection temperature
-        #T_d = T_c - mdot_ratio / cp * (self.h[out_eco_preheat] - self.h[out_rec_cold])
+        T_d = T_c - mdot_ratio * q_preheater_orc / cp  # injection temperature
+        # T_d = T_c - mdot_ratio / cp * (self.h[out_eco_preheat] - self.h[out_rec_cold])
 
         # check that T_d isn't below pinch constraint
         if T_d < (self.T[out_rec_cold] + self.params.dT_pinch):
@@ -378,24 +350,8 @@ class ORCCycleTboil(object):
             T_c = T_a - (T_a - T_d) * R
             mdot_ratio = cp * (T_a - T_c) / (q_boiler_orc + q_superheater_orc)
 
-        #Calculate T_b, BE SH
+        # Calculate T_b, BE SH
         T_b = T_a - mdot_ratio * q_superheater_orc / cp
-
-        # Calculate water heat/work
-        self.results['q_recuperator'] = mdot_ratio * q_recuperator_orc
-        self.results['q_preheater'] = mdot_ratio * q_preheater_orc
-        self.results['q_boiler'] = mdot_ratio * q_boiler_orc
-        self.results['q_superheater'] = mdot_ratio * q_superheater_orc
-        self.results['q_desuperheater'] = mdot_ratio * q_desuperheater_orc
-        self.results['q_condenser'] = mdot_ratio * q_condenser_orc
-        self.results['w_turbine'] = mdot_ratio * w_turbine_orc
-        self.results['w_pump'] = mdot_ratio * w_pump_orc
-        self.results['w_desuperheater'] = mdot_ratio * w_desuperheater_orc
-        self.results['w_condenser'] = mdot_ratio * w_condenser_orc
-        self.results['w_pump_cooling_tower'] = mdot_ratio * w_pump_cooling_tower
-        self.results['w_vent'] = mdot_ratio * w_vent
-        self.results['w_net'] = self.results['w_turbine'] + self.results['w_pump'] + self.results['w_desuperheater'] + self.results['w_condenser'] + self.results['w_pump_cooling_tower'] + self.results['w_vent']
-        print(self.results['w_net'])  # Stampa il valore di w_net
 
         # Calculate temperatures
         results.dT_range_CT = self.T[out_rec_hot] - self.T[out_desh]
@@ -426,13 +382,63 @@ class ORCCycleTboil(object):
         # return temperature
         results.state = FluidState.getStateFromPT(initialState.P_Pa, T_d, self.params.working_fluid)
 
+        self.condenser = Condenser(self.params.condenser_type, self.params, T_condense_C)
+
+        if self.params.condenser_type == CondenserType.WATER:
+            w_pump_water_cond, T_cooling_water_mid, T_cooling_water_out = self.condenser.computeWaterCondenser(self.T[out_desh], mdot_ratio, q_condenser_orc, q_desuperheater_orc)
+            w_pump_cooler = w_pump_water_cond  # Solo il valore calcolato
+            T_cooling_in = self.params.T_cooling_water_in
+            T_cooling_mid = T_cooling_water_mid
+            T_cooling_out = T_cooling_water_out
+            fluid2_name = 'water'
+            w_vent = 0
+        elif self.params.condenser_type == CondenserType.AIR:
+            w_vent_air_cond, T_cooling_air_mid, T_cooling_air_out = self.condenser.computeWaterCondenser(self.T[out_desh], mdot_ratio, q_condenser_orc, q_desuperheater_orc)
+            w_vent = w_vent_air_cond
+            T_cooling_in = self.params.T_ambient_C
+            T_cooling_mid = T_cooling_air_mid
+            T_cooling_out = T_cooling_air_out
+            fluid2_name = 'air'
+            w_pump_cooler = 0
+        elif self.params.condenser_type == CondenserType.EVAPORATIVE_TOWER:
+            w_pump_ct, w_vent_ct = self.condenser.computeEvaporativeTower(q_condenser_orc, q_desuperheater_orc)
+            w_pump_cooler = w_pump_ct
+            w_vent = w_vent_ct
+            T_cooling_in = T_in_water_ct
+            T_cooling_out = T_out_water_ct
+            fraction = q_condenser_orc / (q_condenser_orc + q_desuperheater_orc)
+            T_cooling_mid = T_cooling_in + fraction * (T_cooling_out - T_cooling_in)
+            fluid2_name = 'water'
+
+        # Cooling Tower Parasitic load
+        dT_range = self.T[out_rec_hot] - self.T[out_desh]
+        parasiticPowerFraction = CoolingCondensingTower.parasiticPowerFraction(self.params.T_ambient_C, self.params.dT_approach, dT_range, self.params.cooling_mode)
+        w_desuperheater_orc = q_desuperheater_orc * parasiticPowerFraction('cooling')
+        w_condenser_orc = q_condenser_orc * parasiticPowerFraction('condensing')
+
+        # Calculate water heat/work
+        self.results['q_recuperator'] = mdot_ratio * q_recuperator_orc
+        self.results['q_preheater'] = mdot_ratio * q_preheater_orc
+        self.results['q_boiler'] = mdot_ratio * q_boiler_orc
+        self.results['q_superheater'] = mdot_ratio * q_superheater_orc
+        self.results['q_desuperheater'] = mdot_ratio * q_desuperheater_orc
+        self.results['q_condenser'] = mdot_ratio * q_condenser_orc
+        self.results['w_turbine'] = mdot_ratio * w_turbine_orc
+        self.results['w_pump'] = mdot_ratio * w_pump_orc
+        self.results['w_desuperheater'] = mdot_ratio * w_desuperheater_orc
+        self.results['w_condenser'] = mdot_ratio * w_condenser_orc
+        self.results['w_pump_cooler'] = mdot_ratio * w_pump_cooler
+        self.results['w_vent'] = mdot_ratio * w_vent
+        self.results['w_net'] = self.results['w_turbine'] + self.results['w_pump'] + self.results['w_desuperheater'] + self.results['w_condenser'] + self.results['w_pump_cooler'] + self.results['w_vent']
+        print(self.results['w_net'])  # Stampa il valore di w_net
+
         #PlotTQHX
         # Points for the recuperator
         n_points = 10
-        h_array_rec_hot = np.linspace(self.state[out_rec_hot].h_Jkg, self.state[in_rec_hot].h_Jkg, n_points)  # entalpia lato caldo
-        h_array_rec_cold = np.linspace(self.state[in_rec_cold].h_Jkg, self.state[out_rec_cold].h_Jkg,n_points)  # entalpia lato freddo
-        p_array_rec_hot = np.linspace(self.state[out_rec_hot].P_Pa, self.state[in_rec_hot].P_Pa,n_points)  # pressione lato caldo
-        p_array_rec_cold = np.linspace(self.state[in_rec_cold].P_Pa, self.state[out_rec_cold].P_Pa,n_points)  # pressione lato freddo
+        h_array_rec_hot = np.linspace(self.h[out_rec_hot], self.h[in_rec_hot], n_points)  # entalpia lato caldo
+        h_array_rec_cold = np.linspace(self.h[in_rec_cold], self.h[out_rec_cold], n_points)  # entalpia lato freddo
+        p_array_rec_hot = np.linspace(self.p[out_rec_hot], self.p[in_rec_hot],n_points)  # pressione lato caldo
+        p_array_rec_cold = np.linspace(self.p[in_rec_cold], self.p[out_rec_cold], n_points)  # pressione lato freddo
         T_array_rec_hot = np.array([FluidState.getStateFromPh(p1, h1, self.params.orc_fluid).T_C for p1, h1 in zip(p_array_rec_hot, h_array_rec_hot)])  # dalla coppia del primo elemento p e h, ottiene la T
         T_array_rec_cold = np.array([FluidState.getStateFromPh(p2, h2, self.params.orc_fluid).T_C for p2, h2 in zip(p_array_rec_cold, h_array_rec_cold)])
 
@@ -453,56 +459,29 @@ class ORCCycleTboil(object):
         T_array_sh = np.array([self.T[in_sh], self.T[out_sh]])
         T_array_PHE_geo_sh = np.array([T_b, T_a])
 
-        #Water condenser
-        self.state_cond = [None] * 2
-        p_amb = 10e4
-        cp_amb = FluidState.getStateFromPT(p_amb, self.params.T_cooling_water_in, 'Water').cp_JK
-
-        if self.params.dT_cooling == 0:
-            self.T_cooling_water_mid = self.T[out_desh] - self.params.dT_pp_cond
-            #R = m_cooling/m_water
-            self.R = mdot_ratio * abs(q_condenser_orc)/(cp_amb * (self.T_cooling_water_mid - self.params.T_cooling_water_in))
-            T_cooling_water_out = self.T_cooling_water_mid + abs(q_desuperheater_orc)/(cp_amb * self.R)
-            self.state_cond[0] = FluidState.getStateFromPT(p_amb, self.params.T_cooling_water_in, 'Water')
-            p_water_out = p_amb - (self.params.dp_water_condenser * 10e4)
-            self.state_cond[1] = FluidState.getStateFromPT(p_water_out, T_cooling_water_out, 'Water')
-        else:
-            T_cooling_water_out = self.params.T_cooling_water_in + self.params.dT_cooling
-            ratio = q_condenser_orc/q_desuperheater_orc
-            self.T_b = (self.params.T_cooling_water_in + ratio * T_cooling_water_out)/(1 + ratio)
-            self.params.dT_pp_cond = self.T[out_desh] - self.T_cooling_water_mid
-
-            if self.T_cooling_water_mid > T_condense_C:
-                raise ValueError('GenGeo::ORCCycleTboil:T_cooling_water_mid cannot be greater than T_condense_C')
-
-            self.R = mdot_ratio * abs(q_condenser_orc)/(cp_amb * (self.T_cooling_water_mid - self.params.T_cooling_water_in))
-            self.state_cond[0] = FluidState.getStateFromPT(p_amb, self.params.T_cooling_water_in, 'Water')
-            p_water_out = p_amb - (self.params.dp_water_condenser * 10e4)
-            self.state_cond[1] = FluidState.getStateFromPT(p_water_out, T_cooling_water_out, 'Water')
-
-        #Points for water the condenser
+        #Points for water the CONDENSER
         T_array_cond = np.array([self.T[in_cond], self.T[out_cond]])
-        T_array_cond_water = np.array([self.params.T_cooling_water_in, self.T_cooling_water_mid])
+        T_array_condenser = np.array([T_cooling_in, T_cooling_mid])
 
         #Desuperheater
         T_array_desh = np.array([self.T[out_desh], self.T[in_desh]])
-        T_array_desh_water = np.array([self.T_cooling_water_mid, T_cooling_water_out])
+        T_array_deshuperheater = np.array([T_cooling_mid, T_cooling_out])
 
         # Creazione del dizionario HXs
         HXs = {
              'condenser': {
                  'T1': [T_array_cond],
-                 'T2': [T_array_cond_water],
+                 'T2': [T_array_condenser],
                  'fluid1': [self.params.orc_fluid],  # Fluido orc
-                 'fluid2': ['water'],  # Fluido utilizzato per il raffreddamento (ad esempio acqua)
+                 'fluid2': [fluid2_name],  # Fluido utilizzato per il raffreddamento nel condensatore
                  'Q_sections': [abs(q_condenser_orc)],
                  'HX_parameters': {'HX_arrangement': ['counterflow']}  # Configurazione di scambio termico
              },
             'desuperheater': {
                 'T1': [T_array_desh],
-                'T2': [T_array_desh_water],
+                'T2': [T_array_deshuperheater],
                 'fluid1': [self.params.orc_fluid],  # Fluido orc
-                'fluid2': ['water'],  # Fluido utilizzato per il raffreddamento (ad esempio acqua)
+                'fluid2': [fluid2_name],  # Fluido utilizzato per il raffreddamento
                 'Q_sections': [abs(q_desuperheater_orc)],
                 'HX_parameters': {'HX_arrangement': ['counterflow']}  # Configurazione di scambio termico
             },
@@ -553,16 +532,6 @@ class ORCCycleTboil(object):
 
         # Chiamo la funzione di plotting
         #PlotTQHX(HXs, HX_names=HX_names)
-
-        # # Esegui aggiornamenti per ogni stato del ciclo
-        # for i in range(10):
-        #     self.update_properties(i)
-        #
-        # # Calcola le temperature per ciascun stato del ciclo
-        # temperatures = self.get_temperatures()
-        #
-        # # Aggiungi le temperature ai risultati
-        # self.results['temperatures'] = temperatures
 
         return self.results
 

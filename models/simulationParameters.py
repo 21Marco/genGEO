@@ -16,6 +16,8 @@
 from models.optimizationType import OptimizationType
 from models.coolingCondensingTowerMode import CoolingCondensingTowerMode
 from models.wellFieldType import WellFieldType
+from src.condenser import CondenserType
+
 
 class SimulationParameters(object):
     """SimulationParameters provides physical properties of the system."""
@@ -35,15 +37,14 @@ class SimulationParameters(object):
                 silica_precipitation = False,
                 T_surface_rock = 15,
                 T_ambient_C = 15.,
-                use_wet_bulb = False,  #se True uso questo metodo
                 reservoir_thickness = 100.,
                 permeability = 1.0e-15 * 15000 / 100., # permeability = transmissivity / thickness
                 wellFieldType = WellFieldType._5Spot_SharedNeighbor,
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
-                orc_Saturated = True,  # se True, ciclo saturo
-                orc_no_Rec = True,     # se True, no recuperatore
+                orc_Saturated = False,  # se True, ciclo saturo
+                orc_no_Rec = False,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.75,
                 dp_dT_loss = {      #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
@@ -65,22 +66,27 @@ class SimulationParameters(object):
                 eta_turbine_orc = 0.8,   # isoentropic
                 eta_pump_co2 = 0.9,
                 eta_turbine_co2 = 0.78,
+                #CONDENSER
                 cooling_mode = CoolingCondensingTowerMode.Wet,
+                condenser_type = CondenserType.WATER,
+                eta_me_pump = 0.94,  # electrical mechanical efficiency
+                eta_hydr_pump = 0.75,  # hydraulic efficiency
+                rho_water = 1000,  # kg/m3
+                #WATER Condneser
                 T_cooling_water_in = 10.,  #T water in cond
                 dT_cooling = 0.,           #dT_cond = T_cond_out - T_cond_in
                 dT_pp_cond = 5.,
-                dp_water_condenser = 0.,
-                # cooling tower
+                dp_water_condenser = 20000,  # Pa
+                #AIR Condenser
+                dp_air_condenser = 200,  #Pa
+                eta_vent = 0.7,
+                #EVAPORATIVE TOWER Condenser
                 dT_ct = 5.,
                 dT_water_ct = 7.,  # DT water in the cooling tower
                 dT_pp1_ct = 1.,    # T_out_water_ct - T_cond
                 cp_water = 4186,   # J/kgK
                 dP_ct = 200000,    # Pa
-                eta_me_pump = 0.94,  #electrical mechanical efficiency
-                eta_hydr_pump = 0.75,  #hydraulic efficiency
-                rho_water = 1000,   #kg/m3
                 RH_in = 0.6,    #relative humidity
-                #T_in_water_ct = 10.,
                 dT_max = 10.,
                 # cost model
                 cost_year = 2019,
@@ -114,7 +120,6 @@ class SimulationParameters(object):
         self.silica_precipitation = silica_precipitation
         self.T_surface_rock = T_surface_rock
         self.T_ambient_C = T_ambient_C
-        self.use_wet_bulb = use_wet_bulb
         self.reservoir_thickness = reservoir_thickness
         self.permeability = permeability
         self.wellFieldType = wellFieldType
@@ -136,10 +141,13 @@ class SimulationParameters(object):
         self.eta_pump_co2 = eta_pump_co2
         self.eta_turbine_co2 = eta_turbine_co2
         self.cooling_mode = cooling_mode
+        self.condenser_type = condenser_type
         self.T_cooling_water_in = T_cooling_water_in
         self.dT_cooling = dT_cooling
         self.dT_pp_cond = dT_pp_cond
         self.dp_water_condenser = dp_water_condenser
+        self.dp_air_condenser = dp_air_condenser
+        self.eta_vent = eta_vent
         self.dT_ct = dT_ct
         self.dT_pp1_ct = dT_pp1_ct
         self.dT_water_ct = dT_water_ct
