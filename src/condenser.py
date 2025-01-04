@@ -67,15 +67,15 @@ class Condenser:
             p_air_out = p_amb - self.params.dp_air_condenser
             state_cond[1] = FluidState.getStateFromPT(p_air_out, T_cooling_air_out, 'Air')
 
-        w_vent_air_cond = -(self.params.dp_air_condenser * self.params.mdot_ratio) / self.params.eta_vent
-        return w_vent_air_cond, T_cooling_air_mid, T_cooling_air_out
+        w_fan_air_cond = -(self.params.dp_air_condenser * self.params.mdot_ratio) / self.params.eta_fan
+        return w_fan_air_cond, T_cooling_air_mid, T_cooling_air_out
 
     def computeEvaporativeTower(self, q_condenser_orc, q_desuperheater_orc):
         q_cooling_orc = -(q_condenser_orc + q_desuperheater_orc)
         mdot_ratio_water_ct = q_cooling_orc / (self.params.cp_water * self.params.dT_water_ct)
         w_pump_ct = -(self.params.dP_ct * mdot_ratio_water_ct) / (self.params.rho_water * self.params.eta_me_pump * self.params.eta_hydr_pump)
-        w_vent_ct = 0.01 * q_cooling_orc
-        return w_pump_ct, w_vent_ct
+        w_fan_ct = 0.01 * q_cooling_orc
+        return w_pump_ct, w_fan_ct
 
     def computeCondenser(self):
         if self.condenser_type == CondenserType.WATER:

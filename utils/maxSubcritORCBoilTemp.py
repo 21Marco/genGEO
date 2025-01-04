@@ -21,7 +21,7 @@ def maxSubcritORCBoilTemp(orc_fluid):    #Funzione che calcola la temperatura ma
     P_crit = FluidState.getPcrit(orc_fluid)  #calcola Pcrit
 
     # assume min pressure is condensing at 0C
-    P_min = FluidState.getStateFromTQ(0, 1, orc_fluid).P_Pa #calcola Pmin he è la P di condensazione (supposta) a 0°C e in condiz di vap saturo
+    P_min = FluidState.getStateFromTQ(0, 1, orc_fluid).P_Pa #calcola Pmin che è la P di condensazione (supposta) a 0°C e in condiz di vap saturo
     dP = (P_crit-P_min)/1000  #crea un passo
 
     # find pressure with maximum entropy

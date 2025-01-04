@@ -14,31 +14,34 @@ from utils.fluidState import FluidState
 # Configurazione parametri simulazione
 params = SimulationParameters(orc_fluid = 'R245fa')
 
-initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
+initialState = FluidState.getStateFromPT(1.e6, 120., 'water')
 
 # Creo l'oggetto ORCCycleTboil
 cycle = ORCCycleTboil(params = params)
 
 def simulation(initialState, params):
     # Intervalli di T_boil_C e dT_ap_phe
-    T_boil_values = np.arange(80, 121, 5)  # Valori con step di 5
-    dT_approach_values = np.arange(5, 21, 5)
+    dT_approach_values = np.arange(5, 45, 5)  # Valori con step di 5
+    dT_superheating_values = np.arange(0, 5, 5)
 
     # Dizionario per salvare i risultati
     results_dict = {}
 
     # Itero sugli intervalli
-    for T_boil_C in T_boil_values:
-        for dT_ap_phe in dT_approach_values:
-
-            # Aggiorno il parametro dT_ap_phe nel ciclo, perchè in solve ho self.params.dT_ap_phe e qui l'ho chiamato semplicemente dT_ap_phe
-            params.dT_ap_phe = dT_ap_phe
+    for dT_ap_phe in dT_approach_values:
+        for dT_sh_phe in dT_superheating_values:
 
             # Simulazione per questi valori specifici di T_boil_C e dT_ap_phe
-            results = cycle.solve(initialState, T_boil_C = T_boil_C, dT_ap_phe = dT_ap_phe)
+            results = cycle.solve(initialState, dT_ap_phe = dT_ap_phe, dT_sh_phe = dT_sh_phe)
 
             # Salvo il risultato di w_net per questa combinazione di T_boil_C e dT_ap_phe
-            results_dict[(T_boil_C, dT_ap_phe)] = results['w_net']
+            results_dict[(dT_ap_phe, dT_sh_phe)] = results['w_net']
+
+    # Trova il massimo w_net e la relativa combinazione di parametri
+    max_w_net = max(results_dict.values())
+    max_params = [key for key, value in results_dict.items() if value == max_w_net]
+
+    print(f"Maximum w_net: {max_w_net} obtained for parameters: {max_params}")
 
     # Metto i risultati in 'results'
     gengeo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))  # Risali di un livello
@@ -50,9 +53,9 @@ def simulation(initialState, params):
     # Salvataggio in un file CSV (sovrascrive ogni volta)
     with open(output_csv_file, mode='w', newline='') as file:  # newline='' serve per evitare che vengano aggiunte righe vuote tra le righe scritte
         writer = csv.writer(file)   #creo un oggetto (writer) per scrivere i dati
-        writer.writerow(['T_boil_C', 'dT_ap_phe', 'w_net'])  # Intestazione
-        for (T_boil_C, dT_ap_phe), w_net in results_dict.items():  # Viene riempito il file
-            writer.writerow([T_boil_C, dT_ap_phe, w_net])
+        writer.writerow(['dT_ap_phe', 'dT_sh_phe', 'w_net'])  # Intestazione
+        for (dT_ap_phe, dT_sh_phe), w_net in results_dict.items():  # Viene riempito il file
+            writer.writerow([dT_ap_phe, dT_sh_phe, w_net])
 
     print(f"File CSV saved in: {output_csv_file}")
 
@@ -61,8 +64,8 @@ def simulation(initialState, params):
 
     # Crea una lista di dizionari (convertendo i valori a tipi nativi di Python)
     json_results = [
-        {"T_boil_C": float(T_boil_C), "dT_ap_phe": float(dT_ap_phe), "w_net": float(w_net)}  # Converti a float o int se necessario
-        for (T_boil_C, dT_ap_phe), w_net in results_dict.items()        # Per ogni coppia di dati, mi da la potenza
+        {"dT_ap_phe": float(dT_ap_phe), "dT_sh_phe": float(dT_sh_phe), "w_net": float(w_net)}  # Converti a float o int se necessario
+        for (dT_ap_phe, dT_sh_phe), w_net in results_dict.items()        # Per ogni coppia di dati, mi da la potenza
     ]
 
     # Scrivi i dati in formato JSON
@@ -73,21 +76,3 @@ def simulation(initialState, params):
 
 # Esegui la simulazione
 simulation(initialState, params)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
