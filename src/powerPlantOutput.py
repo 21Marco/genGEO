@@ -29,8 +29,8 @@ class PowerPlantEnergyOutput(object):
     w_pump = np.nan
     w_desuperheater = np.nan
     w_condenser = np.nan
-    w_pump_cooling_tower = np.nan
-    w_vent = np.nan
+    w_pump_cooler = np.nan
+    w_fan = np.nan
     w_net = np.nan
 
 

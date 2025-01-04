@@ -43,7 +43,7 @@ class ORCCycleTboil(object):
         self.orc_fluid = self.params.orc_fluid
         self.T_boil_max = maxSubcritORCBoilTemp(self.orc_fluid)
         self.T = {}
-        self.results = {}  # Inizializzazione di results come dizionario
+        #self.results = {}  # Inizializzazione di results come dizionario
 
     def update_properties(self, index):
         """Aggiorna temperatura, pressione ed entalpia in base allo stato definito."""
@@ -66,12 +66,12 @@ class ORCCycleTboil(object):
         T_in_C = initialState.T_C
 
         if not dT_ap_phe:
-            #dT_ap_phe = self.params.dT_ap_phe
-            raise ValueError('GenGeo::ORCCycleTboil:Delta T di approach (dT_ap_phe) deve essere specificato.')
+            dT_ap_phe = self.params.dT_ap_phe
+            #raise ValueError('GenGeo::ORCCycleTboil:Delta T di approach (dT_ap_phe) deve essere specificato.')
 
         if not dT_sh_phe:
-            #dT_sh_phe = self.params.dT_sh_phe
-            raise ValueError('GenGeo::ORCCycleTboil:Delta T di superheating (dT_sh_phe) deve essere specificato.')
+            dT_sh_phe = self.params.dT_sh_phe
+            #raise ValueError('GenGeo::ORCCycleTboil:Delta T di superheating (dT_sh_phe) deve essere specificato.')
 
         # Compute the maximum temperature of the ORC cycle (T_in_turb)
         T_max_orc = T_in_C - dT_ap_phe
@@ -90,7 +90,7 @@ class ORCCycleTboil(object):
         if np.isnan(T_boil_C):
             raise Exception('GenGeo::ORCCycleTboil:T_boil_NaN - ORC boil temperature is NaN!')
 
-        if T_boil_C > FluidState.getTcrit(self.params.orc_fluid):
+        if T_boil_C > FluidState.getTcrit(self.params.orc_fluid) * 0.95:
             raise Exception('GenGeo::ORCCycleTboil:Tboil_Too_Large - Boiling temperature above critical point')
 
         # # only refresh T_boil_max if orc_fluid has changed from initial
@@ -391,19 +391,19 @@ class ORCCycleTboil(object):
             T_cooling_mid = T_cooling_water_mid
             T_cooling_out = T_cooling_water_out
             fluid2_name = 'water'
-            w_vent = 0
+            w_fan = 0
         elif self.params.condenser_type == CondenserType.AIR:
-            w_vent_air_cond, T_cooling_air_mid, T_cooling_air_out = self.condenser.computeWaterCondenser(self.T[out_desh], mdot_ratio, q_condenser_orc, q_desuperheater_orc)
-            w_vent = w_vent_air_cond
+            w_fan_air_cond, T_cooling_air_mid, T_cooling_air_out = self.condenser.computeWaterCondenser(self.T[out_desh], mdot_ratio, q_condenser_orc, q_desuperheater_orc)
+            w_fan = w_fan_air_cond
             T_cooling_in = self.params.T_ambient_C
             T_cooling_mid = T_cooling_air_mid
             T_cooling_out = T_cooling_air_out
             fluid2_name = 'air'
             w_pump_cooler = 0
         elif self.params.condenser_type == CondenserType.EVAPORATIVE_TOWER:
-            w_pump_ct, w_vent_ct = self.condenser.computeEvaporativeTower(q_condenser_orc, q_desuperheater_orc)
+            w_pump_ct, w_fan_ct = self.condenser.computeEvaporativeTower(q_condenser_orc, q_desuperheater_orc)
             w_pump_cooler = w_pump_ct
-            w_vent = w_vent_ct
+            w_fan = w_fan_ct
             T_cooling_in = T_in_water_ct
             T_cooling_out = T_out_water_ct
             fraction = q_condenser_orc / (q_condenser_orc + q_desuperheater_orc)
@@ -417,20 +417,20 @@ class ORCCycleTboil(object):
         w_condenser_orc = q_condenser_orc * parasiticPowerFraction('condensing')
 
         # Calculate water heat/work
-        self.results['q_recuperator'] = mdot_ratio * q_recuperator_orc
-        self.results['q_preheater'] = mdot_ratio * q_preheater_orc
-        self.results['q_boiler'] = mdot_ratio * q_boiler_orc
-        self.results['q_superheater'] = mdot_ratio * q_superheater_orc
-        self.results['q_desuperheater'] = mdot_ratio * q_desuperheater_orc
-        self.results['q_condenser'] = mdot_ratio * q_condenser_orc
-        self.results['w_turbine'] = mdot_ratio * w_turbine_orc
-        self.results['w_pump'] = mdot_ratio * w_pump_orc
-        self.results['w_desuperheater'] = mdot_ratio * w_desuperheater_orc
-        self.results['w_condenser'] = mdot_ratio * w_condenser_orc
-        self.results['w_pump_cooler'] = mdot_ratio * w_pump_cooler
-        self.results['w_vent'] = mdot_ratio * w_vent
-        self.results['w_net'] = self.results['w_turbine'] + self.results['w_pump'] + self.results['w_desuperheater'] + self.results['w_condenser'] + self.results['w_pump_cooler'] + self.results['w_vent']
-        print(self.results['w_net'])  # Stampa il valore di w_net
+        results.q_recuperator = mdot_ratio * q_recuperator_orc
+        results.q_preheater = mdot_ratio * q_preheater_orc
+        results.q_boiler = mdot_ratio * q_boiler_orc
+        results.q_superheater = mdot_ratio * q_superheater_orc
+        results.q_desuperheater = mdot_ratio * q_desuperheater_orc
+        results.q_condenser = mdot_ratio * q_condenser_orc
+        results.w_turbine = mdot_ratio * w_turbine_orc
+        results.w_pump = mdot_ratio * w_pump_orc
+        results.w_desuperheater = mdot_ratio * w_desuperheater_orc
+        results.w_condenser = mdot_ratio * w_condenser_orc
+        results.w_pump_cooler = mdot_ratio * w_pump_cooler
+        results.w_fan = mdot_ratio * w_fan
+        results.w_net = results.w_turbine + results.w_pump + results.w_desuperheater + results.w_condenser + results.w_pump_cooler + results.w_fan
+        print(results.w_net)  # Stampa il valore di w_net
 
         #PlotTQHX
         # Points for the recuperator
@@ -533,7 +533,7 @@ class ORCCycleTboil(object):
         # Chiamo la funzione di plotting
         #PlotTQHX(HXs, HX_names=HX_names)
 
-        return self.results
+        return results
 
 
 
