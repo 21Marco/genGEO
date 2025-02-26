@@ -20,7 +20,7 @@ class ORCProblem(ElementwiseProblem):
                          n_obj=1,  # 1 obiettivo: w_net
                          n_constr=0,  # Nessun vincolo di disuguaglianza
                          xl=np.array([5, 0]),  # Limiti inferiori per dT_ap_phe, dT_sh_phe
-                         xu=np.array([30, 35]))  # Limiti superiori per dT_ap_phe, dT_sh_phe
+                         xu=np.array([40, 0]))  # Limiti superiori per dT_ap_phe, dT_sh_phe
 
     def _evaluate(self, x, out, *args, **kwargs):
         dT_ap_phe, dT_sh_phe = x
@@ -28,14 +28,14 @@ class ORCProblem(ElementwiseProblem):
         # Risolvo il ciclo ORC con i parametri forniti
         results = self.orc_cycle.solve(initialState=self.initialState, dT_ap_phe=dT_ap_phe, dT_sh_phe=dT_sh_phe)
 
-        w_net = results['w_net']
+        w_net = results.w_net
 
         out["F"] = -w_net  # Minimizzare il negativo per massimizzare w_net
 
 # Creazione dell'oggetto ORCCycleTboil
 params = SimulationParameters(orc_fluid='R245fa')
 orc_cycle = ORCCycleTboil(params=params)
-initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
+initialState = FluidState.getStateFromPT(1.e6, 120., 'water')
 
 # Creazione del problema
 problem = ORCProblem(orc_cycle, initialState)
@@ -48,7 +48,7 @@ res = minimize(problem,
                algorithm,
                verbose=False,
                seed=1,
-               x0=np.array([20, 15]))  # Imposto un punto iniziale esplicito per dT_ap_phe e dT_sh_phe, altrimenti prende un valore casuale tra i limiti imposti
+               x0=np.array([10, 15]))  # Imposto un punto iniziale esplicito per dT_ap_phe e dT_sh_phe, altrimenti prende un valore casuale tra i limiti imposti
 
 # Stampa dei risultati
 print("Best solution found: ")

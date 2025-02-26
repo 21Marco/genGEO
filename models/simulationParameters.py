@@ -24,7 +24,8 @@ class SimulationParameters(object):
 
     def __init__(self,
                 working_fluid = 'water',   #geothermal fluid
-                orc_fluid = None,      #ORC fluid
+                orc_fluid = 'R134a',      #ORC fluid
+                #m_geo = 33.57,
                 m_dot_IP = None,
                 time_years = 1.,
                 # subsurface model
@@ -36,58 +37,59 @@ class SimulationParameters(object):
                 dT_dz = 0.035,
                 silica_precipitation = False,
                 T_surface_rock = 15,
-                T_ambient_C = 15.,
+                T_ambient_C = 25.,
                 reservoir_thickness = 100.,
                 permeability = 1.0e-15 * 15000 / 100., # permeability = transmissivity / thickness
                 wellFieldType = WellFieldType._5Spot_SharedNeighbor,
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
-                orc_Saturated = False,  # se True, ciclo saturo
-                orc_no_Rec = False,     # se True, no recuperatore
+                orc_Saturated = True,  # se True, ciclo saturo
+                orc_no_Rec = True,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
-                eta_pump = 0.75,
+                eta_pump = 0.70,
                 dp_dT_loss = {      #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
                      'loss_rec_cold': 0,
-                     'loss_eco': 0,
-                     'loss_eva': 0,
+                     'loss_eco': -0,
+                     'loss_sc': -0,
+                     'loss_eva': -0,
                      'loss_sh': 0,
                      'loss_rec_hot': 0,
                      'loss_desh': 0,
-                     'loss_cond': 0
+                     'loss_cond': -0
                 },
-                dT_approach = 7.,  #differenza T acqua raffreddata uscita torre e aria ambiente
-                dT_pinch = 5.,     # Pinch al PHE
+                dT_pinch = 5,     # Pinch al PHE
                 dT_pp_rec = 5.,  # pinch al recuperatore
-                dT_ap_phe = 20.,  # Approach al PHE
-                dT_sh_phe = 10.,  # superheater al PHE
-                dT_sc_phe = 2.,   # sub_cooling al PHE
+                dT_ap_phe = 10,  # Approach al PHE
+                dT_sh_phe = 0,  # superheater al PHE
+                dT_sc_phe = 0.1,   # sub_cooling al PHE
                 eta_pump_orc = 0.75,   # isoentropic
-                eta_turbine_orc = 0.8,   # isoentropic
+                eta_turbine_orc = 0.80, # isoentropic
                 eta_pump_co2 = 0.9,
                 eta_turbine_co2 = 0.78,
                 #CONDENSER
                 cooling_mode = CoolingCondensingTowerMode.Wet,
-                condenser_type = CondenserType.WATER,
-                eta_me_pump = 0.94,  # electrical mechanical efficiency
+                condenser_type = CondenserType.AIR,
+                dT_approach_cond = 15,  # 7.,  #differenza T out cond e T in fluido refrigerante
+                eta_me_pump = 0.95,  # electrical mechanical efficiency
                 eta_hydr_pump = 0.75,  # hydraulic efficiency
                 rho_water = 1000,  # kg/m3
-                #WATER Condneser
-                T_cooling_water_in = 10.,  #T water in cond
-                dT_cooling = 0.,           #dT_cond = T_cond_out - T_cond_in
-                dT_pp_cond = 5.,
+                dT_cooling = 0,  # dT_cond = T_cond_out - T_cond_in
+                dT_pp_cond = 10.,
                 dp_water_condenser = 20000,  # Pa
+                #WATER Condneser
+                T_cooling_water_in = 20.,  #T water in cond
                 #AIR Condenser
                 dp_air_condenser = 200,  #Pa
-                eta_vent = 0.7,
+                eta_fan = 0.7,
                 #EVAPORATIVE TOWER Condenser
-                dT_ct = 5.,
-                dT_water_ct = 7.,  # DT water in the cooling tower
-                dT_pp1_ct = 1.,    # T_out_water_ct - T_cond
+                dT_ct = 3 ,
+                dT_water_ct = 12,  # DT water in the cooling tower
+                dT_pp_star_ct = 1.,    # T_out_water_ct - T_cond
                 cp_water = 4186,   # J/kgK
                 dP_ct = 200000,    # Pa
-                RH_in = 0.6,    #relative humidity
-                dT_max = 10.,
+                RH_in = 0.55,    #relative humidity
+                dT_max = 10,
                 # cost model
                 cost_year = 2019,
                 success_rate = 0.95,
@@ -100,7 +102,7 @@ class SimulationParameters(object):
                 g = 9.81,                       # m/s**2
                 rho_rock = 2650.,               # kg/m**3
                 c_rock = 1000.,                 # J/kg-K
-                k_rock = 2.1,                   # W/m-K
+                k_rock = 2.0,                   # W/m-K
                 useWellboreHeatLoss = True,     # bool
                 well_segments = 100,            # number of well segments
                 # Friction factor
@@ -109,6 +111,7 @@ class SimulationParameters(object):
 
         self.working_fluid = working_fluid
         self.orc_fluid = orc_fluid
+        #self.m_geo = m_geo
         self.m_dot_IP = m_dot_IP
         self.time_years = time_years
         self.depth = depth
@@ -130,7 +133,7 @@ class SimulationParameters(object):
         self.max_pump_dP = max_pump_dP
         self.eta_pump = eta_pump
         self.dp_dT_loss = dp_dT_loss
-        self.dT_approach = dT_approach
+        self.dT_approach_cond = dT_approach_cond
         self.dT_pinch = dT_pinch
         self.dT_pp_rec = dT_pp_rec
         self.dT_ap_phe = dT_ap_phe
@@ -147,9 +150,9 @@ class SimulationParameters(object):
         self.dT_pp_cond = dT_pp_cond
         self.dp_water_condenser = dp_water_condenser
         self.dp_air_condenser = dp_air_condenser
-        self.eta_vent = eta_vent
+        self.eta_fan = eta_fan
         self.dT_ct = dT_ct
-        self.dT_pp1_ct = dT_pp1_ct
+        self.dT_pp_star_ct = dT_pp_star_ct
         self.dT_water_ct = dT_water_ct
         self.cp_water = cp_water
         self.dP_ct = dP_ct

@@ -25,7 +25,7 @@ from models.simulationParameters import SimulationParameters
 
 from tests.testAssertion import testAssert
 
-params = SimulationParameters(orc_fluid = 'R245fa')
+params = SimulationParameters(orc_fluid = 'R134a')
 cycle = ORCCycleTboil(params = params)
 
 class ORCCycleTboilTest(unittest.TestCase):
@@ -43,8 +43,8 @@ class ORCCycleTboilTest(unittest.TestCase):
 
     def testORCCycleTboil(self):
 
-        initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
-        results = cycle.solve(initialState, T_boil_C = 100., dT_pinch = 5.)
+        initialState = FluidState.getStateFromPT(2e6, 120., 'water')
+        results = cycle.solve(initialState, T_boil_C = 100., dT_pinch = 0.)
 
         self.assertTrue(*testAssert(results.state.T_C, 68.36, 'test1_temp'))
         self.assertTrue(*testAssert(results.w_net, 3.8559e4, 'test1_w_net'))
@@ -78,11 +78,11 @@ class ORCCycleTboilTest(unittest.TestCase):
 
     def testORCCycleTboil_new(self):
 
-        initialState = FluidState.getStateFromPT(1.e6, 150., 'water')
-        results = cycle.solve(initialState, dT_ap_phe = 36.40368051566951, dT_sh_phe = 19.978267444722356 )
+        initialState = FluidState.getStateFromPT(2e6, 120., 'water')
+        results = cycle.solve(initialState, dT_ap_phe = 25, dT_sh_phe = 0 )
 
         self.assertTrue(*testAssert(results.state.T_C, 68.36, 'test1_temp'))
-        self.assertTrue(*testAssert(results.w_net, 3.8559e4, 'test1_w_net'))
+        self.assertTrue(*testAssert(results.w_net, 25.37e3, 'test1_w_net'))
         self.assertTrue(*testAssert(results.w_turbine, 4.7773e4, 'test1_w_turbine'))
         self.assertTrue(*testAssert(results.q_preheater, 1.5778e5, 'test1_q_preheater'))
         self.assertTrue(*testAssert(results.q_boiler, 1.9380e5, 'test1_q_boiler'))
