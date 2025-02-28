@@ -13,7 +13,7 @@ class Condenser:
         self.T = T
 
     def computeWaterCondenser(self, T_out_desh, mdot_ratio, q_condenser_orc, q_desuperheater_orc, T_condense_C):
-        p_amb = 1e5
+        p_amb = 101300
         cp_amb = FluidState.getStateFromPT(p_amb, self.params.T_cooling_water_in, 'Water').cp_JK
         state_cond = [None] * 2
 

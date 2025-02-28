@@ -134,35 +134,35 @@ class ORCCycleTboil(object):
 
         #Compute dp and dT for each TDN points; relative if > 0, absolute if < 0
         #Condenser
-        if self.params.dp_dT_loss['loss_cond'] > 0:
+        if self.params.dp_dT_loss['loss_cond'] > 0: # Perdita relativa fornita in %
             self.p[out_desh] = self.state[out_cond].P_Pa / (1 - self.params.dp_dT_loss['loss_cond'])  # dp for the condenser
-        else:
+        else: # Perdita assoluta fornita °C (negativo o 0)
             self.T[out_desh] = self.state[out_cond].T_C - self.params.dp_dT_loss['loss_cond']
             self.p[out_desh] = FluidState.getStateFromTQ(self.T[out_desh], 1, self.params.orc_fluid).P_Pa
 
         #Desuperheater
-        if self.params.dp_dT_loss['loss_desh'] > 0:
-            self.p[in_desh] = self.p[out_desh] / (1 - self.params.dp_dT_loss['loss_desh'])  # dp for the desuperheater
-        else:
+        if self.params.dp_dT_loss['loss_desh'] > 0: # Perdita relativa fornita in %
+            self.p[in_desh] = self.p[out_desh] / (1 - self.params.dp_dT_loss['loss_desh'])  # dp for the desuperheater, loss_desh in %
+        else: # Perdita assoluta fornita in Pascal (negativo o 0)
             self.p[in_desh] = self.params.dp_dT_loss['loss_desh'] + self.p[out_desh]
 
         #Boiler/Evaporator
-        if self.params.dp_dT_loss['loss_eva'] > 0:
+        if self.params.dp_dT_loss['loss_eva'] > 0: # Perdita relativa fornita in %
             self.p[out_eco_subcool] = self.state[out_eva].P_Pa / (1 - self.params.dp_dT_loss['loss_eva'])  # dp for the boiler
-        else:
-            self.T[out_eco_subcool] = self.state[out_eva].T_C + self.params.dp_dT_loss['loss_eva']
+        else: # Perdita assoluta fornita in °C (negativo o 0)
+            self.T[out_eco_subcool] = self.state[out_eva].T_C - self.params.dp_dT_loss['loss_eva']
             self.p[out_eco_subcool] = FluidState.getStateFromTQ(self.T[out_eco_subcool], 0, self.params.orc_fluid).P_Pa
 
         # Subcooling
-        if self.params.dp_dT_loss['loss_sc'] > 0:
+        if self.params.dp_dT_loss['loss_sc'] > 0: # Perdita relativa fornita in %
             self.p[out_eco_preheat] = self.p[out_eco_subcool] / (1 - self.params.dp_dT_loss['loss_sc'])  # dp for the subcooling
-        else:
+        else: # Perdita assoluta fornita in Pascal (negativo o 0)
             self.p[out_eco_preheat] = self.p[out_eco_subcool] - self.params.dp_dT_loss['loss_sc']
 
         #Preheater/Economizer
-        if self.params.dp_dT_loss['loss_eco'] > 0:
+        if self.params.dp_dT_loss['loss_eco'] > 0: # Perdita relativa fornita in %
             self.p[in_eco] = self.p[out_eco_preheat] / (1 - self.params.dp_dT_loss['loss_eco'])  # dp for the pre-heater
-        else:
+        else: # Perdita assoluta fornita in Pascal (negativo o 0)
             self.p[in_eco] = self.p[out_eco_preheat] - self.params.dp_dT_loss['loss_eco']
 
         #State 10 (Desuperheater -> Condenser)
@@ -348,6 +348,7 @@ class ORCCycleTboil(object):
         # mdot_ratio = mdot_orc / mdot_water
         mdot_ratio = cp * (T_a - T_c) / (q_boiler_orc + q_superheater_orc)
         T_d = T_c - mdot_ratio * q_preheater_orc / cp  # reinjection temperature
+        results.T_d = T_d
         # T_d = T_c - mdot_ratio / cp * (self.h[out_eco_preheat] - self.h[out_rec_cold])
 
         # check that T_d isn't below pinch constraint
@@ -363,7 +364,8 @@ class ORCCycleTboil(object):
         T_b = T_a - mdot_ratio * q_superheater_orc / cp
 
         # Calculate temperatures
-        results.dT_range_CT = self.T[out_rec_hot] - self.T[out_desh]
+        results.dT_range_PHE = self.T[out_eva] - self.T[out_rec_cold]
+        # preheater
         dT_A_p = T_d - self.T[out_rec_cold]
         dT_B_p = T_c - self.T[out_eco_subcool]
         if dT_A_p == dT_B_p:
@@ -372,6 +374,7 @@ class ORCCycleTboil(object):
             div = dT_A_p / dT_B_p
             results.dT_LMTD_preheater = (dT_A_p - dT_B_p) / (math.log(abs(div)) * np.sign(div))
 
+        #boiler
         dT_A_b = T_c - self.T[out_eco_subcool]
         dT_B_b = T_b - self.T[out_eva]
         if dT_A_b == dT_B_b:
@@ -380,13 +383,14 @@ class ORCCycleTboil(object):
             div = dT_A_b / dT_B_b
             results.dT_LMTD_boiler = (dT_A_b - dT_B_b) / (math.log(abs(div)) * np.sign(div))
 
-        dT_A_b = T_b - self.T[out_eva]
-        dT_B_b = T_a - self.T[out_sh]
-        if dT_A_b == dT_B_b:
-            results.dT_LMTD_superheater = dT_A_b
+        #superheater
+        dT_A_s = T_b - self.T[out_eva]
+        dT_B_s = T_a - self.T[out_sh]
+        if dT_A_s == dT_B_s:
+            results.dT_LMTD_superheater = dT_A_s
         else:
-            div = dT_A_b / dT_B_b
-            results.dT_LMTD_superheater = (dT_A_b - dT_B_b) / (math.log(abs(div)) * np.sign(div))
+            div = dT_A_s / dT_B_s
+            results.dT_LMTD_superheater = (dT_A_s - dT_B_s) / (math.log(abs(div)) * np.sign(div))
 
         # return temperature
         results.state = FluidState.getStateFromPT(initialState.P_Pa, T_d, self.params.working_fluid)
@@ -419,38 +423,91 @@ class ORCCycleTboil(object):
             T_cooling_mid = T_cooling_in + fraction * (T_cooling_out - T_cooling_in)
             fluid2_name = 'water'
 
-        # # Cooling Tower Parasitic load
-        # dT_range = self.T[out_rec_hot] - self.T[out_desh]
-        # parasiticPowerFraction = CoolingCondensingTower.parasiticPowerFraction(self.params.T_ambient_C, self.params.dT_approach, dT_range, self.params.cooling_mode)
-        # w_desuperheater_orc = q_desuperheater_orc * parasiticPowerFraction('cooling')
-        # w_condenser_orc = q_condenser_orc * parasiticPowerFraction('condensing')
+        # # Calculate water heat/work
+        # results.q_recuperator = mdot_ratio * q_recuperator_orc
+        # results.q_preheater = mdot_ratio * q_preheater_orc
+        # results.q_boiler = mdot_ratio * q_boiler_orc
+        # results.q_superheater = mdot_ratio * q_superheater_orc
+        # results.q_desuperheater = mdot_ratio * q_desuperheater_orc
+        # results.q_condenser = mdot_ratio * q_condenser_orc
+        # results.w_turbine = mdot_ratio * w_turbine_orc
+        # results.w_pump = mdot_ratio * w_pump_orc
+        # # results.w_desuperheater = mdot_ratio * w_desuperheater_orc
+        # # results.w_condenser = mdot_ratio * w_condenser_orc
+        # results.w_pump_cooler = mdot_ratio * w_pump_cooler
+        # results.w_fan = mdot_ratio * w_fan
+        # results.w_net = results.w_turbine + results.w_pump #+ results.q_desuperheater + results.q_condenser + results.w_pump_cooler + results.w_fan
+        # print(results.w_net)  # Stampa il valore di w_net
 
-        # Calculate water heat/work
-        results.q_recuperator = mdot_ratio * q_recuperator_orc
-        results.q_preheater = mdot_ratio * q_preheater_orc
-        results.q_boiler = mdot_ratio * q_boiler_orc
-        results.q_superheater = mdot_ratio * q_superheater_orc
-        results.q_desuperheater = mdot_ratio * q_desuperheater_orc
-        results.q_condenser = mdot_ratio * q_condenser_orc
-        results.w_turbine = mdot_ratio * w_turbine_orc
-        results.w_pump = mdot_ratio * w_pump_orc
-        # results.w_desuperheater = mdot_ratio * w_desuperheater_orc
-        # results.w_condenser = mdot_ratio * w_condenser_orc
-        results.w_pump_cooler = mdot_ratio * w_pump_cooler
-        results.w_fan = mdot_ratio * w_fan
-        results.w_net = results.w_turbine + results.w_pump + results.q_desuperheater + results.q_condenser + results.w_pump_cooler + results.w_fan
-        print(results.w_net)  # Stampa il valore di w_net
+        # Calculate water heat/work fixing m_geo
+        q_recuperator = q_recuperator_orc * mdot_ratio * self.params.m_geo
+        q_preheater = q_preheater_orc * mdot_ratio * self.params.m_geo
+        q_boiler = q_boiler_orc * mdot_ratio * self.params.m_geo
+        q_superheater = q_superheater_orc * mdot_ratio * self.params.m_geo
+        q_desuperheater = q_desuperheater_orc * mdot_ratio * self.params.m_geo
+        q_condenser = q_condenser_orc * mdot_ratio * self.params.m_geo
+        w_turbine = w_turbine_orc * mdot_ratio * self.params.m_geo
+        w_turbine = w_turbine_orc * mdot_ratio * self.params.m_geo
+        w_pump = w_pump_orc * mdot_ratio * self.params.m_geo
+        results.w_net = w_turbine + w_pump
 
-        # m_orc = mdot_ratio * self.params.m_geo
-        # q_recuperator = q_recuperator_orc/m_orc
-        # q_preheater = q_preheater_orc/m_orc
-        # q_boiler = q_boiler_orc/m_orc
-        # q_superheater = q_superheater_orc/m_orc
-        # q_desuperheater = q_desuperheater_orc/m_orc
-        # q_condenser = q_condenser_orc/m_orc
-        # w_turbine = w_turbine_orc/m_orc
-        # w_pump = w_pump_orc/m_orc
-        # w_net = w_turbine + w_pump
+        # Turbine cost
+        results.C_T_G = 1230000 * (n / 2) ** 0.5 * (SP / 0.18) ** 1.1
+
+        # Pump cost
+        results.C_pump_orc = 14000 * (w_pump / 200000) ** 0.67
+
+        # Air Cooled Condenser cost
+        U_desh = 1088.82 #W/m**2-K
+        U_cond = 303.13  #W/m**2-K
+        # Calculate temperatures Desuperheater
+        results.dT_range_ACC = self.T[out_turb] - self.T[out_cond]
+        dT_A_d = self.T[out_turb] - T_cooling_out
+        dT_B_d = self.T[out_desh] - T_cooling_mid
+        if dT_A_d == dT_B_d:
+            results.dT_LMTD_desuperheater = dT_A_p
+        else:
+            div = dT_A_d / dT_B_d
+            results.dT_LMTD_desuperheater = (dT_A_d - dT_B_d) / (math.log(abs(div)) * np.sign(div))
+        A_desh = q_desuperheater/(U_desh * results.dT_LMTD_desuperheater)
+
+        # Calculate temperatures Condenser
+        dT_A_c = self.T[out_desh] - T_cooling_mid
+        dT_B_c = self.T[out_cond] - T_cooling_in
+        if dT_A_c == dT_B_c:
+            results.dT_LMTD_condenser = dT_A_c
+        else:
+            div = dT_A_c / dT_B_c
+            results.dT_LMTD_condenser = (dT_A_c - dT_B_c) / (math.log(abs(div)) * np.sign(div))
+        A_cond = q_condenser / (U_cond * results.dT_LMTD_condenser)
+        results.C_ACC = 530000 * ((A_desh + A_cond) / 3563) ** 0.9
+
+        # Heat Exchanger cost
+        # dT_LMTD_HX
+        # U = 500/1000 #kW/m**2-K
+        U = 500  # W/m**2-K
+        if np.isnan(dT_LMTD_preheater) or dT_LMTD_preheater == 0:
+            A_preheater = 0
+        else:
+            A_preheater = Q_preheater / U / dT_LMTD_preheater
+
+        A_boiler = Q_boiler / U / dT_LMTD_boiler
+        A_HX = A_preheater + A_boiler
+        a = 10 ** (0.03881 - 0.11272*math.log(self.p[in_eco]) + 0.08183*(math.log(self.p[in_eco]))**2)
+        results.C_HE = 1500000 * ((U*A)/(4000)) **0.9 * a
+
+        # Recuperator cost
+        if np.isnan(dT_LMTD_recuperator) or dT_LMTD_recuperator == 0:
+            A_recuperator = 0
+            results.C_recuperator = 0
+        else:
+            A_recuperator = Q_recuperator / U / dT_LMTD_recuperator
+            b = 10 ** (-0.00164 - 0.00627 * math.log(self.p[out_pump]) + 0.0123 * (math.log(self.p[out_pump])) ** 2)
+            results.C_recuperator = 260000 * (U*A/650) ** 0.9 * b
+
+
+
+
 
         #PlotTQHX
         # Points for the recuperator
@@ -551,7 +608,7 @@ class ORCCycleTboil(object):
         HX_names = ['evaporator', 'condenser', 'recuperator'] # Elenco dei nomi dei componenti da plottare
 
         # Chiamo la funzione di plotting
-        PlotTQHX(HXs, HX_names=HX_names)
+        #PlotTQHX(HXs, HX_names=HX_names)
 
         return results
 
