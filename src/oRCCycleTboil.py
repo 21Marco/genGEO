@@ -446,8 +446,8 @@ class ORCCycleTboil(object):
         Q_superheater = q_superheater_orc * m_orc_fluid
         Q_desuperheater = q_desuperheater_orc * m_orc_fluid
         Q_condenser = q_condenser_orc * m_orc_fluid
-        W_turbine = w_turbine_orc * m_orc_fluid
-        W_pump = w_pump_orc * m_orc_fluid
+        W_turbine = w_turbine_orc * m_orc_fluid * self.params.eta_me_turbine_orc
+        W_pump = w_pump_orc * m_orc_fluid / self.params.eta_me_pump_orc
         results.W_net = W_turbine + W_pump
 
         # ORC Component Cost

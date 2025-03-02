@@ -64,8 +64,10 @@ class SimulationParameters(object):
                 dT_ap_phe = 10,  # Approach al PHE
                 dT_sh_phe = 0,  # superheater al PHE
                 dT_sc_phe = 0.1,   # sub_cooling al PHE
-                eta_pump_orc = 0.75,   # isoentropic
+                eta_pump_orc = 0.75,   # isoentropic efficiency
+                eta_me_pump_orc = 0.95, # electrical mechanical efficiency
                 eta_turbine_orc = 0.85, # isoentropic
+                eta_me_turbine_orc = 0.95,  # electrical mechanical efficiency
                 eta_pump_co2 = 0.9,
                 eta_turbine_co2 = 0.78,
                 #CONDENSER
@@ -142,7 +144,9 @@ class SimulationParameters(object):
         self.dT_sh_phe = dT_sh_phe
         self.dT_sc_phe = dT_sc_phe
         self.eta_pump_orc = eta_pump_orc
+        self.eta_me_pump_orc = eta_me_pump_orc
         self.eta_turbine_orc = eta_turbine_orc
+        self.eta_me_turbine_orc = eta_me_turbine_orc
         self.eta_pump_co2 = eta_pump_co2
         self.eta_turbine_co2 = eta_turbine_co2
         self.cooling_mode = cooling_mode
