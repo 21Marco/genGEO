@@ -25,7 +25,8 @@ class SimulationParameters(object):
     def __init__(self,
                 working_fluid = 'water',   #geothermal fluid
                 orc_fluid = 'R134a',      #ORC fluid
-                #m_geo = 33.57,
+                #m_orc = 1,
+                m_geo = 50,  #kg/s
                 m_dot_IP = None,
                 time_years = 1.,
                 # subsurface model
@@ -37,15 +38,15 @@ class SimulationParameters(object):
                 dT_dz = 0.035,
                 silica_precipitation = False,
                 T_surface_rock = 15,
-                T_ambient_C = 25.,
+                T_ambient_C = 20.,
                 reservoir_thickness = 100.,
                 permeability = 1.0e-15 * 15000 / 100., # permeability = transmissivity / thickness
                 wellFieldType = WellFieldType._5Spot_SharedNeighbor,
                 N_5spot = 1, #Square-root of numbe of 5spots which share a central plant in a Many_N configuration. e.g. N=2 is 4 5spots.
                 has_surface_gathering_system = True,
                 # power plant model
-                orc_Saturated = True,  # se True, ciclo saturo
-                orc_no_Rec = True,     # se True, no recuperatore
+                orc_Saturated = False,  # se True, ciclo saturo
+                orc_no_Rec = False,     # se True, no recuperatore
                 max_pump_dP = 10.e6,
                 eta_pump = 0.70,
                 dp_dT_loss = {      #[0, 0, -50000, -1, 0.05, 0.01, 0.02, 0.01, 0.3]
@@ -58,24 +59,24 @@ class SimulationParameters(object):
                      'loss_desh': 0,
                      'loss_cond': -0
                 },
-                dT_pinch = 5,     # Pinch al PHE
+                dT_pp_phe = 5,     # Pinch al PHE
                 dT_pp_rec = 5.,  # pinch al recuperatore
                 dT_ap_phe = 10,  # Approach al PHE
                 dT_sh_phe = 0,  # superheater al PHE
                 dT_sc_phe = 0.1,   # sub_cooling al PHE
                 eta_pump_orc = 0.75,   # isoentropic
-                eta_turbine_orc = 0.80, # isoentropic
+                eta_turbine_orc = 0.85, # isoentropic
                 eta_pump_co2 = 0.9,
                 eta_turbine_co2 = 0.78,
                 #CONDENSER
                 cooling_mode = CoolingCondensingTowerMode.Wet,
                 condenser_type = CondenserType.AIR,
-                dT_approach_cond = 15,  # 7.,  #differenza T out cond e T in fluido refrigerante
+                dT_approach_cond = 15,   #differenza T out cond e T in fluido refrigerante
                 eta_me_pump = 0.95,  # electrical mechanical efficiency
-                eta_hydr_pump = 0.75,  # hydraulic efficiency
+                eta_hydr_pump = 0.85,  # hydraulic efficiency
                 rho_water = 1000,  # kg/m3
                 dT_cooling = 0,  # dT_cond = T_cond_out - T_cond_in
-                dT_pp_cond = 10.,
+                dT_pp_cond = 7.,
                 dp_water_condenser = 20000,  # Pa
                 #WATER Condneser
                 T_cooling_water_in = 20.,  #T water in cond
@@ -111,7 +112,8 @@ class SimulationParameters(object):
 
         self.working_fluid = working_fluid
         self.orc_fluid = orc_fluid
-        #self.m_geo = m_geo
+        #self.m_orc = m_orc
+        self.m_geo = m_geo
         self.m_dot_IP = m_dot_IP
         self.time_years = time_years
         self.depth = depth
@@ -134,7 +136,7 @@ class SimulationParameters(object):
         self.eta_pump = eta_pump
         self.dp_dT_loss = dp_dT_loss
         self.dT_approach_cond = dT_approach_cond
-        self.dT_pinch = dT_pinch
+        self.dT_pp_phe = dT_pp_phe
         self.dT_pp_rec = dT_pp_rec
         self.dT_ap_phe = dT_ap_phe
         self.dT_sh_phe = dT_sh_phe

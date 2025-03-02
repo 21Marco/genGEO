@@ -25,7 +25,7 @@ from models.simulationParameters import SimulationParameters
 
 from tests.testAssertion import testAssert
 
-params = SimulationParameters(orc_fluid = 'R134a')
+params = SimulationParameters(orc_fluid = 'Isobutane')
 cycle = ORCCycleTboil(params = params)
 
 class ORCCycleTboilTest(unittest.TestCase):
@@ -78,8 +78,8 @@ class ORCCycleTboilTest(unittest.TestCase):
 
     def testORCCycleTboil_new(self):
 
-        initialState = FluidState.getStateFromPT(2e6, 120., 'water')
-        results = cycle.solve(initialState, dT_ap_phe = 25, dT_sh_phe = 0 )
+        initialState = FluidState.getStateFromPT(2e5, 150., 'water')
+        results = cycle.solve(initialState, dT_ap_phe = 20, dT_sh_phe = 3)
 
         self.assertTrue(*testAssert(results.state.T_C, 68.36, 'test1_temp'))
         self.assertTrue(*testAssert(results.w_net, 25.37e3, 'test1_w_net'))

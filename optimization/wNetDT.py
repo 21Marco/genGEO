@@ -20,7 +20,7 @@ class ORCProblem(ElementwiseProblem):
                          n_obj=1,  # 1 obiettivo: w_net
                          n_constr=0,  # Nessun vincolo di disuguaglianza
                          xl=np.array([5, 0]),  # Limiti inferiori per dT_ap_phe, dT_sh_phe
-                         xu=np.array([40, 0]))  # Limiti superiori per dT_ap_phe, dT_sh_phe
+                         xu=np.array([40, 20]))  # Limiti superiori per dT_ap_phe, dT_sh_phe
 
     def _evaluate(self, x, out, *args, **kwargs):
         dT_ap_phe, dT_sh_phe = x
@@ -35,7 +35,7 @@ class ORCProblem(ElementwiseProblem):
 # Creazione dell'oggetto ORCCycleTboil
 params = SimulationParameters(orc_fluid='R245fa')
 orc_cycle = ORCCycleTboil(params=params)
-initialState = FluidState.getStateFromPT(1.e6, 120., 'water')
+initialState = FluidState.getStateFromPT(1.e6, 160., 'water')
 
 # Creazione del problema
 problem = ORCProblem(orc_cycle, initialState)

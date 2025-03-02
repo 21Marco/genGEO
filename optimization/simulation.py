@@ -22,7 +22,7 @@ cycle = ORCCycleTboil(params = params)
 def simulation(initialState, params):
     # Intervalli di T_boil_C e dT_ap_phe
     dT_approach_values = np.arange(5, 45, 5)  # Valori con step di 5
-    dT_superheating_values = np.arange(0, 5, 5)
+    dT_superheating_values = np.arange(0, 20, 5)
 
     # Dizionario per salvare i risultati
     results_dict = {}

@@ -27,18 +27,17 @@ class ORCProblem(ElementwiseProblem):
     def __init__(self, orc_cycle, initialState):
         self.orc_cycle = orc_cycle
         self.initialState = initialState
-        super().__init__(n_var=4,  # 4 variabili: dT_ap_phe, dT_sh_phe, dT_pp_phe, dT_pp_rec
+        super().__init__(n_var=2,  # 2 variabili: dT_ap_phe, dT_sh_phe
                          n_obj=1,  # 1 obiettivo: Specific_cost da minimizzare
                          n_constr=0,  # Nessun vincolo di disuguaglianza
-                         xl=np.array([5, 0.1, 5, 0.1]),  # Limiti inferiori per dT_ap_phe, dT_sh_phe, dT_pp_phe, dT_pp_rec
-                         xu=np.array([40, 20, 20, 40]))  # Limiti superiori per dT_ap_phe, dT_sh_phe, dT_pp_phe, dT_pp_rec
+                         xl=np.array([5, 0.1]),  # Limiti inferiori per dT_ap_phe, dT_sh_phe
+                         xu=np.array([40, 20]))  # Limiti superiori per dT_ap_phe, dT_sh_phe
 
     def _evaluate(self, x, out, *args, **kwargs):
-        dT_ap_phe, dT_sh_phe, dT_pp_phe, dT_pp_rec = x
+        dT_ap_phe, dT_sh_phe = x
 
         try:
             # Calcola i risultati per il ciclo ORC
-            # Passiamo anche dT_pp_phe e dT_pp_rec al ciclo ORC (come variabili indirette, adattandole nel ciclo)
             results = self.orc_cycle.solve(initialState=self.initialState,
                                            dT_ap_phe=dT_ap_phe,
                                            dT_sh_phe=dT_sh_phe)
@@ -50,15 +49,11 @@ class ORCProblem(ElementwiseProblem):
                 out["F"] = np.inf  # Se Specific_cost è NaN o inf, non considerare questa soluzione
                 return
 
-            # Aggiungiamo un termine di penalizzazione per dT_pp_phe e dT_pp_rec
-            specific_cost += dT_pp_phe * 0.01  # Penalizzazione per dT_pp_phe
-            specific_cost += dT_pp_rec * 0.01  # Penalizzazione per dT_pp_rec (modifica questo valore se necessario)
-
             out["F"] = specific_cost  # Minimizzare Specific_cost
 
         except Exception as e:
             # Gestisce qualsiasi eccezione che potrebbe verificarsi
-            print(f"Errore durante il calcolo con dT_ap_phe={dT_ap_phe}, dT_sh_phe={dT_sh_phe}, dT_pp_phe={dT_pp_phe}, dT_pp_rec={dT_pp_rec}: {e}")
+            print(f"Errore durante il calcolo con dT_ap_phe={dT_ap_phe}, dT_sh_phe={dT_sh_phe}: {e}")
             traceback.print_exc()
             out["F"] = np.inf  # In caso di errore, assegna np.inf per evitare che la soluzione venga presa in considerazione
 
@@ -90,14 +85,12 @@ for fluido in fluids:
                            algorithm,
                            verbose=False,
                            seed=1,
-                           x0=np.array([20, 10, 10, 20]))  # Imposto un punto iniziale esplicito per dT_ap_phe, dT_sh_phe, dT_pp_phe e dT_pp_rec
+                           x0=np.array([20, 10]))  # Imposto un punto iniziale esplicito per dT_ap_phe e dT_sh_phe
 
             # Memorizzazione dei risultati
             results_dict[(fluido, T_geo)] = {
                 "dT_ap_phe": float(res.X[0]),
                 "dT_sh_phe": float(res.X[1]),
-                "dT_pp_phe": float(res.X[2]),
-                "dT_pp_rec": float(res.X[3]),
                 "Specific_cost": float(res.F[0]),
             }
 
@@ -106,8 +99,6 @@ for fluido in fluids:
             print("Migliore soluzione trovata:")
             print(f"dT_ap_phe: {float(res.X[0]):.2f} °C")
             print(f"dT_sh_phe: {float(res.X[1]):.2f} °C")
-            print(f"dT_pp_phe: {float(res.X[2]):.2f} °C")
-            print(f"dT_pp_rec: {float(res.X[3]):.2f} °C")
             print(f"Specific cost minimizzato: {float(res.F[0]):.2f}")
 
         except Exception as e:
@@ -125,9 +116,8 @@ output_csv_file = os.path.join(results_folder, 'orc_minSpecificCost_results.csv'
 # Salvataggio in un file CSV (sovrascrive ogni volta)
 with open(output_csv_file, mode='w', newline='') as file:  # newline='' serve per evitare che vengano aggiunte righe vuote tra le righe scritte
     writer = csv.writer(file)   # Creo un oggetto (writer) per scrivere i dati
-    writer.writerow(['fluido', 'T_geo (°C)', 'dT_ap_phe (°C)', 'dT_sh_phe (°C)', 'dT_pp_phe (°C)', 'dT_pp_rec (°C)', 'Specific_cost'])  # Intestazione
+    writer.writerow(['fluido', 'T_geo (°C)', 'dT_ap_phe (°C)', 'dT_sh_phe (°C)', 'Specific_cost'])  # Intestazione
     for (fluido, T_geo), result in results_dict.items():  # Viene riempito il file
-        writer.writerow([fluido, T_geo, result["dT_ap_phe"], result["dT_sh_phe"], result["dT_pp_phe"], result["dT_pp_rec"], result["Specific_cost"]])
+        writer.writerow([fluido, T_geo, result["dT_ap_phe"], result["dT_sh_phe"], result["Specific_cost"]])
 
 print(f"File CSV saved in: {output_csv_file}")
-
