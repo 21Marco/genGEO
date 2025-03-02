@@ -32,13 +32,27 @@ class PowerPlantEnergyOutput(object):
     w_pump_cooler = np.nan
     w_fan = np.nan
     w_net = np.nan
+    C_turb = np.nan
+    C_pump_orc = np.nan
+    C_ACC = np.nan
+    C_eco = np.nan
+    C_eva = np.nan
+    C_sh = np.nan
+    C_HE = np.nan
+    C_rec =np.nan
+    C_tot_orc = np.nan
+    Specific_cost = np.nan
 
 
 class PowerPlantOutput(PowerPlantEnergyOutput):
     """PowerPlantOutput."""
-    dT_range_CT = np.nan
-    dT_LMTD_recuperator = np.nan
+    dT_range_PHE = np.nan
     dT_LMTD_preheater = np.nan
     dT_LMTD_boiler = np.nan
     dT_LMTD_superheater = np.nan
+    dT_range_ACC = np.nan
+    dT_LMTD_desuperheater = np.nan
+    dT_LMTD_condenser = np.nan
+    dT_LMTD_recuperator = np.nan
+
     state = np.nan

@@ -227,7 +227,6 @@ class ORCCycleTboil(object):
                 self.h[out_turb] = self.state[out_eva].h_Jkg - self.params.eta_turbine_orc * (self.state[out_eva].h_Jkg - h_out_turb_s)
                 self.state[out_turb] = FluidState.getStateFromPh(self.p[out_turb], self.h[out_turb], self.params.orc_fluid)
                 self.update_properties(out_turb)
-                T_out_is = FluidState.getStateFromPS(self.p[out_turb], self.state[in_turb].s_JK, self.params.orc_fluid).T_C
 
                 #State 9 (Recuperator hot -> Desuperheater)
                 self.T[out_rec_hot] = self.state[out_pump].T_C + self.params.dT_pp_rec
@@ -344,7 +343,7 @@ class ORCCycleTboil(object):
         cp = FluidState.getStateFromPT(P_sat_w + 100e3, T_in_C, 'Water').cp_JK  # al posto di P_sat + 100e3 mettere la P_out_well_geothermal_fluid, initialState.P_Pa
         # Water state a, inlet, b, mid, c, mid, d, exit
         T_a = T_in_C
-        T_c = self.T[out_eco_subcool] + self.params.dT_pinch
+        T_c = self.T[out_eco_subcool] + self.params.dT_pp_phe
         # mdot_ratio = mdot_orc / mdot_water
         mdot_ratio = cp * (T_a - T_c) / (q_boiler_orc + q_superheater_orc)
         T_d = T_c - mdot_ratio * q_preheater_orc / cp  # reinjection temperature
@@ -352,10 +351,10 @@ class ORCCycleTboil(object):
         # T_d = T_c - mdot_ratio / cp * (self.h[out_eco_preheat] - self.h[out_rec_cold])
 
         # check that T_d isn't below pinch constraint
-        if T_d < (self.T[out_rec_cold] + self.params.dT_pinch):
+        if T_d < (self.T[out_rec_cold] + self.params.dT_pp_phe):
             # pinch constraint is here, not at c
             # outlet is rec cold temp plus pinch
-            T_d = self.T[out_rec_cold] + self.params.dT_pinch
+            T_d = self.T[out_rec_cold] + self.params.dT_pp_phe
             R = q_boiler_orc / (q_boiler_orc + q_preheater_orc)
             T_c = T_a - (T_a - T_d) * R
             mdot_ratio = cp * (T_a - T_c) / (q_boiler_orc + q_superheater_orc)
@@ -371,7 +370,7 @@ class ORCCycleTboil(object):
         if dT_A_p == dT_B_p:
             results.dT_LMTD_preheater = dT_A_p
         else:
-            div = dT_A_p / dT_B_p
+            div = (dT_A_p + 273.15) / (dT_B_p + 273.15)  #passo da °C in K per la formula di LMTD
             results.dT_LMTD_preheater = (dT_A_p - dT_B_p) / (math.log(abs(div)) * np.sign(div))
 
         #boiler
@@ -380,7 +379,7 @@ class ORCCycleTboil(object):
         if dT_A_b == dT_B_b:
             results.dT_LMTD_boiler = dT_A_b
         else:
-            div = dT_A_b / dT_B_b
+            div = (dT_A_b + 273.15) / (dT_B_b + 273.15)
             results.dT_LMTD_boiler = (dT_A_b - dT_B_b) / (math.log(abs(div)) * np.sign(div))
 
         #superheater
@@ -389,7 +388,7 @@ class ORCCycleTboil(object):
         if dT_A_s == dT_B_s:
             results.dT_LMTD_superheater = dT_A_s
         else:
-            div = dT_A_s / dT_B_s
+            div = (dT_A_s + 273.15) / (dT_B_s + 273.15)
             results.dT_LMTD_superheater = (dT_A_s - dT_B_s) / (math.log(abs(div)) * np.sign(div))
 
         # return temperature
@@ -440,36 +439,134 @@ class ORCCycleTboil(object):
         # print(results.w_net)  # Stampa il valore di w_net
 
         # Calculate water heat/work fixing m_geo
-        q_recuperator = q_recuperator_orc * mdot_ratio * self.params.m_geo
-        q_preheater = q_preheater_orc * mdot_ratio * self.params.m_geo
-        q_boiler = q_boiler_orc * mdot_ratio * self.params.m_geo
-        q_superheater = q_superheater_orc * mdot_ratio * self.params.m_geo
-        q_desuperheater = q_desuperheater_orc * mdot_ratio * self.params.m_geo
-        q_condenser = q_condenser_orc * mdot_ratio * self.params.m_geo
-        w_turbine = w_turbine_orc * mdot_ratio * self.params.m_geo
-        w_turbine = w_turbine_orc * mdot_ratio * self.params.m_geo
-        w_pump = w_pump_orc * mdot_ratio * self.params.m_geo
-        results.w_net = w_turbine + w_pump
+        m_orc_fluid = mdot_ratio * self.params.m_geo
+        Q_recuperator = q_recuperator_orc * m_orc_fluid
+        Q_preheater = q_preheater_orc * m_orc_fluid
+        Q_boiler = q_boiler_orc * m_orc_fluid
+        Q_superheater = q_superheater_orc * m_orc_fluid
+        Q_desuperheater = q_desuperheater_orc * m_orc_fluid
+        Q_condenser = q_condenser_orc * m_orc_fluid
+        W_turbine = w_turbine_orc * m_orc_fluid
+        W_pump = w_pump_orc * m_orc_fluid
+        results.W_net = W_turbine + W_pump
 
-        # Turbine cost
-        results.C_T_G = 1230000 * (n / 2) ** 0.5 * (SP / 0.18) ** 1.1
+        # ORC Component Cost
+        # # TURBINE cost
+        # Isoentropic outlet turbine conditions
+        T_out_turb_is = FluidState.getStateFromPS(self.p[out_turb], self.state[in_turb].s_JK, self.params.orc_fluid).T_C
+        h_out_turb_is = h_out_turb_s
+        delta_h_is_tot = self.h[in_turb] - h_out_turb_is
+        #Volume ratio
+        rho_orc_fluid_out_turbine_is = FluidState.getStateFromPT(self.p[out_turb], T_out_turb_is, self.params.orc_fluid).rho_kgm3  #density orc fluid at the isoentropic turbine outlet conditions
+        v_orc_fluid_out_turbine_is = 1 / rho_orc_fluid_out_turbine_is  # specific volume m3/kg
+        V_out_is = m_orc_fluid * v_orc_fluid_out_turbine_is # volumetric flow rate m3/s
+        rho_orc_fluid_in_turbine = FluidState.getStateFromPT(self.p[in_turb], self.T[in_turb], self.params.orc_fluid).rho_kgm3
+        v_orc_fluid_in_turbine = 1 / rho_orc_fluid_in_turbine
+        V_in =m_orc_fluid * v_orc_fluid_in_turbine
+        Vr = V_out_is / V_in
 
-        # Pump cost
-        results.C_pump_orc = 14000 * (w_pump / 200000) ** 0.67
+        # Funzione per calcolare Kis, Um, tipo di turbina e numero di stadi (Carico aerodinamico)
+        def dimensionamento_turbina_carico(Um_max, delta_h_is_tot):
+            Kis = delta_h_is_tot / (Um_max ** 2 / 2)  # Calcolo del coefficiente di scarico Kis
 
-        # Air Cooled Condenser cost
+            # Verifica per Kis e dimensionamento
+            if Kis < 2:
+                tipo_turbina = 'Monostadio a reazione'
+                Kis = 2
+                Um = math.sqrt(2 * delta_h_is_tot / Kis)
+                if Um > Um_max:
+                    tipo_turbina = 'Errore: Um troppo alto, non possibile con Kis = 2'
+                    Um = None  # Um è troppo alto, quindi lo mettiamo a None
+                n_stadi = 1
+            elif 2 <= Kis < 4.5:
+                tipo_turbina = 'Monostadio (azione o reazione), ma imposto Kis a 2 per reazione'
+                Kis_originale = Kis
+                Kis = 2
+                Um = math.sqrt(2 * delta_h_is_tot / Kis)
+                n_stadi = math.ceil(delta_h_is_tot / Kis * Um_max ** 2 / 2)  # Calcolo il numero di stadi
+                if Um > Um_max:
+                    tipo_turbina = 'Monostadio ad azione'
+                    Kis = Kis_originale  # Ripristino il valore originale di Kis
+                    Um = math.sqrt(2 * delta_h_is_tot / Kis)
+                    n_stadi = 1
+            else:
+                tipo_turbina = 'Monostadio ad azione'
+                Kis_originale = Kis
+                Kis = 2
+                Um = math.sqrt(2 * delta_h_is_tot / Kis)
+                n_stadi = math.ceil(delta_h_is_tot / Kis * Um_max ** 2 / 2)
+                if Um > Um_max:
+                    tipo_turbina = 'Monostadio ad azione'
+                    Kis = Kis_originale  # Ripristino il valore originale di Kis
+                    Um = math.sqrt(2 * delta_h_is_tot / Kis)
+                    n_stadi = 1
+
+            return Kis, Um, tipo_turbina, n_stadi,
+
+        # Funzione per calcolare il tipo di turbina e numero di stadi (Portata volumetrica)
+        def dimensionamento_turbina_volumetrica(Vr, Vr_is_stadio):
+            if Vr < 3:
+                tipo_turbina = 'Monostadio'
+                n_stadi = 1  # Un solo stadio
+            elif 3 <= Vr < 4.5:
+                tipo_turbina = 'Monostadio difficile (azione)'
+                n_stadi = 1  # Un solo stadio, difficile ma possibile
+            else:
+                tipo_turbina = 'Multistadio'
+                n_stadi = math.ceil(math.log(Vr) / math.log(Vr_is_stadio))  # Numero di stadi
+
+            return tipo_turbina, n_stadi
+
+        # Parametri di input
+        Um_max = 450  # Velocità massima consentita (m/s)
+        Vr_is_stadio = 4  # Portata volumetrica per stadio
+
+        # Chiamate delle funzioni di dimensionamento
+        Kis, Um, tipo_turbina_carico, n_stadi_carico = dimensionamento_turbina_carico(Um_max, delta_h_is_tot)
+        tipo_turbina_volumetrica, n_stadi_volumetrica = dimensionamento_turbina_volumetrica(Vr, Vr_is_stadio)
+
+        # Confronto tra il numero di stadi calcolato per carico (Δh) e portata volumetrica (Vr)
+        n_stadi_finale = max(n_stadi_carico, n_stadi_volumetrica)
+
+        # Calcolo SP
+        delta_h_is_stage = delta_h_is_tot / n_stadi_finale
+        SP = ((V_out_is) ** 0.5 / (delta_h_is_stage) ** 0.25)
+
+        # Output
+        print(f"--- Dimensionamento in base al carico aerodinamico ---")
+        print(f"Valore di Kis calcolato: {Kis:.2f}")
+        print(f"Tipo di turbina: {tipo_turbina_carico}")
+        print(f"Velocità periferica Um calcolata: {Um:.2f} m/s")
+        print(f"Numero di stadi (Carico aerodinamico): {n_stadi_carico}")
+
+        print(f"\n--- Dimensionamento in base alla portata volumetrica ---")
+        print(f"Tipo di turbina: {tipo_turbina_volumetrica}")
+        print(f"Numero di stadi (Portata volumetrica): {n_stadi_volumetrica}")
+
+        print(f"\n--- Risultato finale ---")
+        print(f"Numero di stadi finale (scelto il maggiore tra carico e portata volumetrica): {n_stadi_finale}")
+
+        results.C_turb = 1230000 * (n_stadi_finale / 2) ** 0.5 * (SP / 0.18) ** 1.1
+
+        # PUMP cost
+        results.C_pump_orc = 14000 * (abs(W_pump) / 200000) ** 0.67    #€
+
+        # AIR COOLED CONDENSER cost
         U_desh = 1088.82 #W/m**2-K
         U_cond = 303.13  #W/m**2-K
         # Calculate temperatures Desuperheater
-        results.dT_range_ACC = self.T[out_turb] - self.T[out_cond]
-        dT_A_d = self.T[out_turb] - T_cooling_out
+        results.dT_range_ACC = self.T[out_rec_hot] - self.T[out_cond]
+        dT_A_d = self.T[out_rec_hot] - T_cooling_out
         dT_B_d = self.T[out_desh] - T_cooling_mid
         if dT_A_d == dT_B_d:
             results.dT_LMTD_desuperheater = dT_A_p
         else:
-            div = dT_A_d / dT_B_d
+            div = (dT_A_d + 273.15) / (dT_B_d + 273.15)
             results.dT_LMTD_desuperheater = (dT_A_d - dT_B_d) / (math.log(abs(div)) * np.sign(div))
-        A_desh = q_desuperheater/(U_desh * results.dT_LMTD_desuperheater)
+        if np.isnan(results.dT_LMTD_desuperheater) or results.dT_LMTD_desuperheater == 0:
+            A_desh = 0
+        else:
+            A_desh = abs(Q_desuperheater)/(U_desh * results.dT_LMTD_desuperheater)  #m**2
 
         # Calculate temperatures Condenser
         dT_A_c = self.T[out_desh] - T_cooling_mid
@@ -477,37 +574,64 @@ class ORCCycleTboil(object):
         if dT_A_c == dT_B_c:
             results.dT_LMTD_condenser = dT_A_c
         else:
-            div = dT_A_c / dT_B_c
+            div = (dT_A_c + 273.15) / (dT_B_c + 273.15)
             results.dT_LMTD_condenser = (dT_A_c - dT_B_c) / (math.log(abs(div)) * np.sign(div))
-        A_cond = q_condenser / (U_cond * results.dT_LMTD_condenser)
-        results.C_ACC = 530000 * ((A_desh + A_cond) / 3563) ** 0.9
-
-        # Heat Exchanger cost
-        # dT_LMTD_HX
-        # U = 500/1000 #kW/m**2-K
-        U = 500  # W/m**2-K
-        if np.isnan(dT_LMTD_preheater) or dT_LMTD_preheater == 0:
-            A_preheater = 0
+        if np.isnan(results.dT_LMTD_condenser) or results.dT_LMTD_condenser == 0:
+            A_cond = 0
         else:
-            A_preheater = Q_preheater / U / dT_LMTD_preheater
+            A_cond = abs(Q_condenser) / (U_cond * results.dT_LMTD_condenser)
+        A_ACC = A_desh + A_cond
+        results.C_ACC = 530000 * ((A_ACC) / 3563) ** 0.9  #€
 
-        A_boiler = Q_boiler / U / dT_LMTD_boiler
-        A_HX = A_preheater + A_boiler
-        a = 10 ** (0.03881 - 0.11272*math.log(self.p[in_eco]) + 0.08183*(math.log(self.p[in_eco]))**2)
-        results.C_HE = 1500000 * ((U*A)/(4000)) **0.9 * a
-
-        # Recuperator cost
-        if np.isnan(dT_LMTD_recuperator) or dT_LMTD_recuperator == 0:
-            A_recuperator = 0
-            results.C_recuperator = 0
+        # HEAT EXCHANGER cost
+        U_eco = 592.05  #W/m**2-K
+        U_eva = 592.05  #W/m**2-K
+        U_sh = 674.84   #W/m**2-K
+        a1 = 0.03881
+        a2 = -0.11272
+        a3 = 0.08183
+        # preheater/economizer
+        if np.isnan(results.dT_LMTD_preheater) or results.dT_LMTD_preheater == 0:
+            A_eco = 0
         else:
-            A_recuperator = Q_recuperator / U / dT_LMTD_recuperator
-            b = 10 ** (-0.00164 - 0.00627 * math.log(self.p[out_pump]) + 0.0123 * (math.log(self.p[out_pump])) ** 2)
-            results.C_recuperator = 260000 * (U*A/650) ** 0.9 * b
+            A_eco = abs(Q_preheater) / (U_eco * results.dT_LMTD_preheater)
+        a_eco = 10 ** (a1 + a2 * math.log10(self.p[in_eco]*10e-5) + a3 *(math.log10(self.p[in_eco]*10e-5))**2)
+        results.C_eco = 1500000 * ((U_eco * A_eco * 10e-3)/(4000)) ** 0.9 * a_eco
+        # boiler/evaporator
+        if np.isnan(results.dT_LMTD_boiler) or results.dT_LMTD_boiler == 0:
+            A_eva = 0
+        else:
+            A_eva = abs(Q_boiler) / (U_eva * results.dT_LMTD_boiler)
+        a_eva = 10 ** (a1 + a2 * math.log10(self.p[in_eva_preheat]*10e-5) + a3 * (math.log10(self.p[in_eva_preheat]*10e-5)) ** 2)
+        results.C_eva = 1500000 * ((U_eva * A_eva * 10e-3) / (4000)) ** 0.9 * a_eva
+        # superheater
+        if np.isnan(results.dT_LMTD_superheater) or results.dT_LMTD_superheater == 0:
+            A_sh = 0
+        else:
+            A_sh = abs(Q_superheater) / (U_eva * results.dT_LMTD_superheater)
+        a_sh = 10 ** (a1 + a2 * math.log10(self.p[in_sh]*10e-5) + a3 *(math.log10(self.p[in_sh]*10e-5))**2)
+        results.C_sh = 1500000 * ((U_sh * A_sh * 10e-3) / (4000)) ** 0.9 * a_sh
+        #A_HE = A_eco + A_eva + A_sh
+        results.C_HE = results.C_eco + results.C_eva + results.C_sh
 
+        # RECUPERATOR cost
+        U_rec = 1059.13 #W/m**2-K
+        dT_A_r = self.T[out_turb] - self.T[out_rec_hot]
+        dT_B_r = self.T[out_rec_cold] - self.T[out_pump]
+        if dT_A_r == dT_B_r:
+            results.dT_LMTD_recuperator = dT_A_r
+        else:
+            div = (dT_A_r + 273.15) / (dT_B_r + 273.15)
+            results.dT_LMTD_recuperator = (dT_A_r - dT_B_r) / (math.log(abs(div)) * np.sign(div))
+        if np.isnan(results.dT_LMTD_recuperator) or results.dT_LMTD_recuperator == 0:
+            A_rec = 0
+        else:
+            A_rec = abs(Q_recuperator) / (U_rec * results.dT_LMTD_recuperator)  # m**2
+        a_rec = 10 ** (-0.00164 - 0.00627 * math.log10(self.p[out_pump]*10e-5) + 0.0123 * (math.log10(self.p[out_pump]*10e-5)) ** 2)
+        results.C_rec = 260000 * ((U_rec * A_rec * 10e-3)/650) ** 0.9 * a_rec
 
-
-
+        results.C_tot_orc = results.C_turb + results.C_pump_orc + results.C_ACC + results.C_HE + results.C_rec
+        results.Specific_cost = results.C_tot_orc / (results.W_net * 10e-3)
 
         #PlotTQHX
         # Points for the recuperator
