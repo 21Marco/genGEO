@@ -31,7 +31,7 @@ class ORCProblem(ElementwiseProblem):
                          n_obj=1,  # 1 obiettivo: solo la potenza netta w_net
                          n_constr=0,  # Nessun vincolo di disuguaglianza
                          xl=np.array([5, 0.1]),  # Limiti inferiori per dT_ap_phe, dT_sh_phe
-                         xu=np.array([50, 70]))  # Limiti superiori per dT_ap_phe, dT_sh_phe
+                         xu=np.array([65, 50]))  # Limiti superiori per dT_ap_phe, dT_sh_phe
 
     def _evaluate(self, x, out, *args, **kwargs):
         dT_ap_phe, dT_sh_phe = x
